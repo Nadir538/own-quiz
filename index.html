@@ -1,0 +1,1683 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Apple Auth SPA</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='50' x='6' font-size='50'%3E%F0%9F%8D%8E%3C/text%3E%3C/svg%3E" />
+    <style>
+      :root {
+        --bg: radial-gradient(circle at 20% 10%, #ffffff, #f4f4f7 40%, #eceef6 100%);
+        --text: #101114;
+        --text-muted: #6d7280;
+        --card-bg: rgba(255, 255, 255, 0.62);
+        --card-border: rgba(255, 255, 255, 0.78);
+        --card-shadow: 0 20px 60px rgba(22, 29, 45, 0.16);
+        --input-bg: rgba(255, 255, 255, 0.85);
+        --input-border: rgba(25, 31, 48, 0.12);
+        --button-bg: #0071e3;
+        --button-bg-hover: #005fc0;
+        --menu-bg: rgba(255, 255, 255, 0.68);
+      }
+
+      body.dark {
+        --bg: radial-gradient(circle at 20% 10%, #1f2027, #111216 50%, #000000 100%);
+        --text: #f5f6fa;
+        --text-muted: #adb3c2;
+        --card-bg: rgba(28, 28, 30, 0.74);
+        --card-border: rgba(255, 255, 255, 0.12);
+        --card-shadow: 0 24px 70px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+        --input-bg: rgba(12, 12, 13, 0.9);
+        --input-border: rgba(255, 255, 255, 0.16);
+        --button-bg: #2997ff;
+        --button-bg-hover: #1487f4;
+        --menu-bg: rgba(28, 28, 30, 0.7);
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; }
+
+      body {
+        font-family: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        transition: background .45s ease, color .45s ease;
+        padding: 20px;
+        overflow-x: hidden;
+        position: relative;
+      }
+
+      body::before,
+      body::after {
+        content: "";
+        position: fixed;
+        width: 340px;
+        height: 340px;
+        border-radius: 50%;
+        pointer-events: none;
+        filter: blur(60px);
+        opacity: .22;
+        z-index: -1;
+        animation: blob-float 14s ease-in-out infinite;
+      }
+
+      body::before {
+        top: -80px;
+        left: -80px;
+        background: #6bb8ff;
+      }
+
+      body::after {
+        right: -80px;
+        bottom: -100px;
+        background: #b789ff;
+        animation-delay: -6s;
+      }
+
+      .theme-toggle {
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        z-index: 20;
+        width: 52px;
+        height: 52px;
+        border-radius: 50%;
+        border: 1px solid var(--card-border);
+        background: var(--card-bg);
+        color: var(--text);
+        box-shadow: var(--card-shadow);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        cursor: pointer;
+        transition: background .35s ease, color .35s ease, border-color .35s ease, box-shadow .35s ease, transform .25s ease;
+      }
+
+      .app {
+        min-height: calc(100vh - 40px);
+        display: grid;
+        place-items: center;
+      }
+
+      .auth-layout {
+        width: min(100%, 980px);
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+        align-items: center;
+      }
+
+      .card {
+        width: min(100%, 420px);
+        border-radius: 28px;
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        box-shadow: var(--card-shadow);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        padding: 26px;
+        transition: background .35s ease, border-color .35s ease, box-shadow .35s ease;
+        animation: float-soft 7s ease-in-out infinite;
+        transform-style: preserve-3d;
+        will-change: transform;
+      }
+
+      .quiz-copy {
+        border-radius: 28px;
+        padding: 24px;
+        background: var(--menu-bg);
+        border: 1px solid var(--card-border);
+        box-shadow: var(--card-shadow);
+        transition: background .35s ease, border-color .35s ease, box-shadow .35s ease, color .35s ease;
+        animation: float-soft 8.5s ease-in-out infinite;
+        animation-delay: -2s;
+        transform-style: preserve-3d;
+        will-change: transform;
+      }
+
+      .quiz-copy h2 {
+        margin: 0 0 12px;
+        font-size: clamp(1.3rem, 3vw, 2rem);
+      }
+
+      .quiz-copy p {
+        margin: 0;
+        line-height: 1.55;
+        color: var(--text-muted);
+      }
+
+      .switch {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        background: var(--menu-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 40px;
+        padding: 4px;
+        margin-bottom: 16px;
+      }
+
+      .switch button {
+        border: 0;
+        border-radius: 40px;
+        padding: 10px 12px;
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: all .3s ease;
+      }
+
+      .switch button.active {
+        background: var(--button-bg);
+        color: #fff;
+      }
+
+      .panel-wrap { overflow: hidden; position: relative; min-height: 220px; }
+      .panel-track { display: flex; width: 200%; transition: transform .55s cubic-bezier(.22,.61,.36,1); }
+      .panel-track.register-mode { transform: translateX(-50%); }
+
+      .panel {
+        width: 50%;
+        padding-top: 6px;
+      }
+
+      .form {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      input {
+        width: 100%;
+        border-radius: 16px;
+        border: 1px solid var(--input-border);
+        background: var(--input-bg);
+        color: var(--text);
+        padding: 14px 16px;
+        font: inherit;
+        transition: border-color .3s ease, background .3s ease, color .3s ease;
+      }
+
+      .password-wrap {
+        position: relative;
+      }
+
+      .password-wrap input {
+        padding-right: 52px;
+      }
+
+      .eye-btn {
+        position: absolute;
+        top: 50%;
+        right: 10px;
+        transform: translateY(-50%);
+        border: 0;
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: color .25s ease, transform .2s ease;
+      }
+
+      .eye-btn svg {
+        width: 20px;
+        height: 20px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .eye-btn.is-open svg line {
+        opacity: 0;
+      }
+
+      .eye-btn:hover {
+        color: var(--text);
+        transform: translateY(-50%) scale(1.08);
+      }
+
+      .form-error {
+        margin: 0;
+        font-size: .9rem;
+        color: #ff4d4f;
+      }
+
+      .btn {
+        position: relative;
+        overflow: hidden;
+        border: 0;
+        border-radius: 40px;
+        padding: 13px 16px;
+        font: inherit;
+        font-weight: 600;
+        color: #fff;
+        background: var(--button-bg);
+        cursor: pointer;
+        transition: transform .25s ease, box-shadow .25s ease, background .3s ease;
+      }
+
+      .btn::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -120%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(110deg, transparent 0%, rgba(255, 255, 255, .28) 50%, transparent 100%);
+        transition: left .6s ease;
+      }
+
+      .view {
+        width: min(100%, 980px);
+      }
+
+      .menu {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        border-radius: 28px;
+        padding: 14px;
+        background: var(--menu-bg);
+        border: 1px solid var(--card-border);
+        box-shadow: var(--card-shadow);
+        transition: background .35s ease, border-color .35s ease, box-shadow .35s ease;
+      }
+
+      .dashboard {
+        width: min(100%, 980px);
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+
+      .dash-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .dash-meta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .badge {
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: .78rem;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+        border: 1px solid var(--card-border);
+        background: rgba(71, 201, 126, 0.16);
+        color: #35d07f;
+      }
+
+      .badge.violet {
+        background: rgba(144, 117, 255, 0.16);
+        color: #b49cff;
+      }
+
+      .dash-title {
+        font-size: clamp(1.2rem, 3vw, 1.8rem);
+        font-weight: 700;
+      }
+
+      .dash-note {
+        color: var(--text-muted);
+        margin: 0;
+      }
+
+      .rank-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .menu-swipe-wrap {
+        overflow: hidden;
+      }
+
+      .menu-swipe-track {
+        display: flex;
+        width: 500%;
+        transition: transform .55s cubic-bezier(.22,.61,.36,1);
+      }
+
+      .menu-page {
+        width: 20%;
+        padding: 2px;
+      }
+
+      .rank-card {
+        border-radius: 24px;
+        background: var(--menu-bg);
+        border: 1px solid var(--card-border);
+        box-shadow: var(--card-shadow);
+        padding: 14px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .rank-card::before {
+        content: "";
+        position: absolute;
+        inset: -40% auto auto -20%;
+        width: 180px;
+        height: 180px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255,255,255,.24) 0%, rgba(255,255,255,0) 70%);
+        pointer-events: none;
+      }
+
+      .rank-card h3 {
+        margin: 0 0 8px;
+      }
+
+      .feed-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+
+      .feed-compose-btn {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        border: 1px solid var(--card-border);
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text);
+        font-size: 16px;
+        cursor: pointer;
+      }
+
+      .event-list {
+        margin: 0;
+        padding-left: 18px;
+        line-height: 1.7;
+      }
+
+      .feed-form {
+        display: grid;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .feed-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .feed-item {
+        border: 1px solid var(--card-border);
+        border-radius: 14px;
+        padding: 10px 12px;
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .feed-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 6px;
+      }
+
+      .feed-author {
+        font-weight: 700;
+      }
+
+      .feed-time {
+        color: var(--text-muted);
+        font-size: .8rem;
+      }
+
+      .feed-actions {
+        margin-top: 8px;
+        display: flex;
+        gap: 8px;
+      }
+
+      .feed-like {
+        border: 1px solid var(--card-border);
+        background: transparent;
+        border-radius: 999px;
+        color: var(--text);
+        padding: 4px 10px;
+        cursor: pointer;
+      }
+
+      .rank-card ol,
+      .rank-card ul {
+        margin: 0;
+        padding-left: 20px;
+        line-height: 1.7;
+      }
+
+      .play-wrap {
+        display: grid;
+        place-items: center;
+        margin: 6px 0 12px;
+      }
+
+      .play-btn {
+        min-width: 220px;
+        font-size: 1.1rem;
+        letter-spacing: .03em;
+        box-shadow: 0 10px 30px rgba(0, 113, 227, 0.35);
+        animation: pulse-play 2s ease-in-out infinite;
+      }
+
+      .match-box {
+        border-radius: 20px;
+        border: 1px solid var(--card-border);
+        background: var(--menu-bg);
+        box-shadow: var(--card-shadow);
+        padding: 12px 14px;
+        width: min(100%, 520px);
+        margin-top: 10px;
+      }
+
+      .match-box.modal {
+        margin-top: 0;
+      }
+
+      .match-progress {
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        overflow: hidden;
+        margin: 10px 0;
+      }
+
+      .match-progress span {
+        display: block;
+        height: 100%;
+        width: 0%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #34d17d 0%, #4aa6ff 50%, #9b6eff 100%);
+        transition: width .35s ease;
+      }
+
+      .match-status {
+        margin: 0 0 8px;
+        color: var(--text-muted);
+      }
+
+      .match-players {
+        margin: 0;
+        padding-left: 20px;
+        line-height: 1.6;
+      }
+
+      .bottom-tabs {
+        position: sticky;
+        bottom: 0;
+        z-index: 5;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 8px;
+        border-radius: 24px;
+        padding: 10px;
+        background: var(--menu-bg);
+        border: 1px solid var(--card-border);
+        box-shadow: var(--card-shadow);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+      }
+
+      .tab-item {
+        border: 0;
+        border: 1px solid transparent;
+        border-radius: 16px;
+        padding: 10px 8px;
+        text-align: center;
+        color: var(--text);
+        background: transparent;
+        text-decoration: none;
+        font-size: .92rem;
+        transition: all .25s ease;
+        cursor: pointer;
+      }
+
+      .tab-item.active {
+        border-color: rgba(120, 188, 255, 0.75);
+        background: rgba(86, 170, 255, 0.22);
+        box-shadow: 0 0 0 1px rgba(142, 212, 255, 0.4) inset, 0 8px 20px rgba(65, 151, 236, 0.28);
+      }
+
+      .profile-panel {
+        position: fixed;
+        inset: 0;
+        z-index: 40;
+        display: grid;
+        place-items: center;
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.45);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+
+      .profile-card {
+        width: min(100%, 520px);
+        border-radius: 24px;
+        border: 1px solid var(--card-border);
+        background: var(--menu-bg);
+        box-shadow: var(--card-shadow);
+        padding: 16px;
+      }
+
+      .profile-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .profile-close {
+        min-width: auto;
+        padding: 9px 12px;
+        border-radius: 12px;
+      }
+
+      .profile-head-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .profile-title {
+        margin: 0;
+        font-size: 1.2rem;
+      }
+
+      .profile-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .profile-slider-wrap {
+        overflow: hidden;
+      }
+
+      .profile-track {
+        display: flex;
+        width: 200%;
+        transition: transform .55s cubic-bezier(.22,.61,.36,1);
+      }
+
+      .profile-track.settings-mode {
+        transform: translateX(-50%);
+      }
+
+      .profile-slide {
+        width: 50%;
+      }
+
+      .profile-settings {
+        display: grid;
+        gap: 10px;
+      }
+
+      .profile-menu-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .profile-switch {
+        margin-bottom: 10px;
+      }
+
+      .profile-item {
+        border: 1px solid var(--card-border);
+        border-radius: 16px;
+        padding: 10px;
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .profile-item span {
+        display: block;
+        font-size: .8rem;
+        color: var(--text-muted);
+      }
+
+      .profile-item strong {
+        display: block;
+        margin-top: 2px;
+        font-size: 1.05rem;
+      }
+
+      .profile-card-main {
+        display: grid;
+        justify-items: center;
+        gap: 12px;
+        padding: 22px 20px;
+      }
+
+      .profile-avatar {
+        width: 126px;
+        height: 126px;
+        border-radius: 50%;
+        border: 2px solid var(--card-border);
+        background: linear-gradient(160deg, rgba(109,175,255,.38), rgba(136,100,255,.32));
+        color: var(--text);
+        font-size: 2rem;
+        font-weight: 700;
+        background-size: cover;
+        background-position: center;
+        display: grid;
+        place-items: center;
+      }
+
+      .profile-edit-btn {
+        justify-self: stretch;
+        border: 1px solid var(--card-border);
+        height: 42px;
+        border-radius: 12px;
+        background: rgba(255,255,255,.1);
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      .profile-name-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 700;
+      }
+
+      .profile-name-row h3 {
+        margin: 0;
+        font-size: 1.4rem;
+      }
+
+      .profile-star {
+        color: #ffd451;
+      }
+
+      .profile-bio {
+        margin: 0;
+        width: min(100%, 340px);
+        min-height: 72px;
+        padding: 12px;
+        border: 1px solid var(--card-border);
+        border-radius: 14px;
+        background: rgba(255,255,255,.08);
+        line-height: 1.45;
+      }
+
+      .profile-handle {
+        margin: 0;
+        font-weight: 600;
+        color: var(--text-muted);
+      }
+
+      .profile-textarea {
+        width: 100%;
+        resize: vertical;
+        min-height: 80px;
+        border-radius: 16px;
+        border: 1px solid var(--input-border);
+        background: var(--input-bg);
+        color: var(--text);
+        padding: 12px 14px;
+        font: inherit;
+      }
+
+      .field-label {
+        font-size: .85rem;
+        color: var(--text-muted);
+        font-weight: 600;
+      }
+
+      .profile-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .btn-ghost {
+        background: rgba(255,255,255,.12);
+        color: var(--text);
+      }
+
+      .menu-item {
+        padding: 10px 18px;
+        border-radius: 40px;
+        color: var(--text);
+        text-decoration: none;
+        border: 1px solid transparent;
+        transition: transform .25s ease, box-shadow .25s ease, border-color .3s ease;
+      }
+
+      .welcome {
+        text-align: center;
+        font-size: clamp(1.7rem, 5vw, 3rem);
+        margin: 80px 0 32px;
+      }
+
+      .logout {
+        display: block;
+        margin: 0 auto;
+        min-width: 180px;
+      }
+
+      .hidden { display: none !important; }
+
+      .anim {
+        animation: fade-in-up .7s ease both;
+      }
+
+      @keyframes fade-in-up {
+        from { opacity: 0; transform: translateY(18px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      @keyframes float-soft {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-6px); }
+      }
+
+      @keyframes blob-float {
+        0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+        50% { transform: translate3d(30px, -20px, 0) scale(1.08); }
+      }
+
+      @keyframes pulse-play {
+        0%, 100% { box-shadow: 0 10px 30px rgba(0, 113, 227, 0.3); }
+        50% { box-shadow: 0 18px 40px rgba(112, 75, 255, 0.45); }
+      }
+
+      .btn:hover, .menu-item:hover, .theme-toggle:hover {
+        transform: scale(1.02);
+        box-shadow: 0 10px 22px rgba(0,0,0,.2);
+      }
+
+      .btn:hover::before {
+        left: 120%;
+      }
+
+      .menu-item:hover, .switch button:hover {
+        text-decoration: underline;
+      }
+
+      .menu-item:hover {
+        border-color: var(--card-border);
+        background: rgba(255, 255, 255, 0.08);
+      }
+
+      .tab-item:hover {
+        transform: scale(1.02);
+        border-color: var(--card-border);
+        background: rgba(255, 255, 255, 0.08);
+        text-decoration: underline;
+      }
+
+      @media (max-width: 640px) {
+        .card { padding: 20px; }
+        .welcome { margin-top: 56px; }
+        .play-btn { min-width: 100%; }
+        .bottom-tabs { grid-template-columns: 1fr 1fr 1fr 1fr 1fr; font-size: .82rem; }
+        .profile-grid { grid-template-columns: 1fr; }
+      }
+
+      @media (min-width: 860px) {
+        .auth-layout {
+          grid-template-columns: 420px 1fr;
+        }
+
+        .rank-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+
+      }
+    </style>
+  </head>
+  <body>
+    <button id="themeToggle" class="theme-toggle" aria-label="Переключить тему">🌙</button>
+
+    <main class="app">
+      <section id="authView" class="view anim">
+        <div class="auth-layout">
+          <div class="card">
+            <div class="switch">
+              <button id="loginTab" class="active" type="button">Вход</button>
+              <button id="registerTab" type="button">Регистрация</button>
+            </div>
+
+            <div class="panel-wrap">
+              <div id="panelTrack" class="panel-track">
+                <div class="panel">
+                  <form id="loginForm" class="form" novalidate>
+                    <input id="loginUsername" type="text" placeholder="Имя пользователя" autocomplete="username" required />
+                    <div class="password-wrap">
+                      <input id="loginPass" type="password" placeholder="Пароль" autocomplete="current-password" required />
+                      <button type="button" class="eye-btn" data-target="loginPass" aria-label="Показать пароль">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"></path>
+                          <circle cx="12" cy="12" r="3"></circle>
+                          <line x1="4" y1="20" x2="20" y2="4"></line>
+                        </svg>
+                      </button>
+                    </div>
+                    <p id="loginError" class="form-error hidden">Неверный логин или пароль</p>
+                    <button class="btn" type="submit">Войти</button>
+                  </form>
+                </div>
+
+                <div class="panel">
+                  <form id="registerForm" class="form" novalidate>
+                    <input id="registerName" type="text" placeholder="Имя (видно всем)" required />
+                    <input id="registerUsername" type="text" placeholder="Имя пользователя (4–15 символов)" autocomplete="username" required />
+                    <div class="password-wrap">
+                      <input id="registerPass" type="password" placeholder="Пароль" autocomplete="new-password" required />
+                      <button type="button" class="eye-btn" data-target="registerPass" aria-label="Показать пароль">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"></path>
+                          <circle cx="12" cy="12" r="3"></circle>
+                          <line x1="4" y1="20" x2="20" y2="4"></line>
+                        </svg>
+                      </button>
+                    </div>
+                    <div class="password-wrap">
+                      <input id="registerPassRepeat" type="password" placeholder="Повторный пароль" autocomplete="new-password" required />
+                      <button type="button" class="eye-btn" data-target="registerPassRepeat" aria-label="Показать пароль">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"></path>
+                          <circle cx="12" cy="12" r="3"></circle>
+                          <line x1="4" y1="20" x2="20" y2="4"></line>
+                        </svg>
+                      </button>
+                    </div>
+                    <button class="btn" type="submit">Зарегистрироваться</button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <aside class="quiz-copy anim">
+            <h2>Игра-викторина</h2>
+            <p>
+              Проверь эрудицию в быстрых раундах: выбирай категорию, отвечай на вопросы на время, собирай серию
+              правильных ответов и поднимайся в таблице лидеров.
+            </p>
+          </aside>
+        </div>
+      </section>
+
+      <section id="menuView" class="view hidden">
+        <div class="dashboard">
+          <header class="menu anim dash-top">
+            <div>
+              <div class="dash-title">Викторина</div>
+              <p class="dash-note">Сегодня отличное время подняться в рейтинге.</p>
+              <div class="dash-meta">
+                <span id="onlineBadge" class="badge">Online: 1</span>
+                <span class="badge violet">Сезон #4</span>
+              </div>
+            </div>
+            <button id="logoutBtn" class="btn" type="button">Выйти</button>
+          </header>
+
+          <h1 id="welcomeText" class="welcome anim"></h1>
+
+          <div class="menu-swipe-wrap anim">
+            <div id="menuSwipeTrack" class="menu-swipe-track">
+              <section class="menu-page">
+                <article class="rank-card profile-card-main">
+                  <button id="profileEditBtn" class="profile-edit-btn" type="button" aria-label="Изменить профиль">
+                    <span>Изменить профиль</span>
+                  </button>
+                  <button id="profileAvatar" class="profile-avatar" type="button">A</button>
+                  <div class="profile-name-row">
+                    <h3 id="profileName">Имя</h3>
+                    <span class="profile-star">★</span><span id="profileRating">1200</span>
+                  </div>
+                  <p id="profileHandle" class="profile-handle">@username</p>
+                  <p id="profileBio" class="profile-bio">Описание, которое поставил пользователь.</p>
+                </article>
+              </section>
+
+              <section class="menu-page">
+                <article class="rank-card">
+                  <div class="feed-head">
+                    <h3>Лента</h3>
+                    <button id="feedComposeBtn" class="feed-compose-btn hidden" type="button" aria-label="Написать пост">✏️</button>
+                  </div>
+                  <form id="feedForm" class="feed-form hidden">
+                    <textarea id="feedInput" class="profile-textarea" rows="2" maxlength="120" placeholder="Поделиться новостью..."></textarea>
+                    <button class="btn" type="submit">Опубликовать</button>
+                  </form>
+                  <div id="feedList" class="feed-list"></div>
+                </article>
+              </section>
+
+              <section class="menu-page">
+                <div class="rank-grid">
+                  <article class="rank-card">
+                    <h3>Тройка лидеров</h3>
+                    <ol>
+                      <li>User1</li>
+                      <li>User2</li>
+                      <li>User3</li>
+                    </ol>
+                  </article>
+                  <article class="rank-card">
+                    <h3>Ваше место в рейтинге</h3>
+                    <ul id="userRankList">
+                      <li>996. User996</li>
+                      <li>997. Вы</li>
+                      <li>998. User998</li>
+                    </ul>
+                  </article>
+                </div>
+
+                <div class="play-wrap">
+                  <button id="playBtn" class="btn play-btn" type="button">ИГРАТЬ</button>
+                  <p id="gameStatus" class="dash-note">Нажмите «Играть», чтобы открыть окно подбора.</p>
+                </div>
+              </section>
+
+              <section class="menu-page">
+                <article class="rank-card">
+                  <h3>Турниры</h3>
+                  <ul class="event-list">
+                    <li>Кубок недели — старт через 02:14:33</li>
+                    <li>Блиц-турнир 1v1 — регистрация открыта</li>
+                    <li>Командный турнир — набор участников</li>
+                  </ul>
+                </article>
+              </section>
+
+              <section class="menu-page">
+                <article class="rank-card">
+                  <h3>Ещё</h3>
+                  <ul class="event-list">
+                    <li>Настройки</li>
+                    <li>Поддержка</li>
+                    <li>О проекте</li>
+                  </ul>
+                </article>
+              </section>
+            </div>
+          </div>
+
+          <nav class="bottom-tabs anim">
+            <button id="tabProfile" class="tab-item" type="button">Профиль</button>
+            <button id="tabFeed" class="tab-item" type="button">Лента</button>
+            <button id="tabHome" class="tab-item" type="button">Главная</button>
+            <button id="tabTour" class="tab-item" type="button">Турниры</button>
+            <button id="tabMore" class="tab-item" type="button">Ещё</button>
+          </nav>
+        </div>
+      </section>
+    </main>
+
+    <section id="matchModal" class="profile-panel hidden">
+      <div class="profile-card anim">
+        <div class="profile-head">
+          <h3 class="profile-title">Подбор соперников</h3>
+          <button id="matchClose" class="btn profile-close" type="button">✕</button>
+        </div>
+        <div class="match-box modal">
+          <p id="matchStatus" class="match-status">Нажмите «Играть», чтобы начать подбор соперников.</p>
+          <div class="match-progress"><span id="matchProgressBar"></span></div>
+          <ol id="matchPlayers" class="match-players">
+            <li>Ожидание игроков...</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section id="profileEditModal" class="profile-panel hidden">
+      <div class="profile-card anim">
+        <div class="profile-head">
+          <h3 class="profile-title">Изменить профиль</h3>
+          <button id="profileEditClose" class="btn profile-close" type="button">✕</button>
+        </div>
+        <form id="profileEditForm" class="profile-settings">
+          <button id="profileAvatarEdit" class="profile-avatar" type="button">A</button>
+          <input id="avatarUpload" type="file" accept="image/*" class="hidden" />
+          <label class="field-label" for="editName">Имя</label>
+          <input id="editName" type="text" placeholder="Имя" required />
+          <label class="field-label" for="editBio">Описание</label>
+          <textarea id="editBio" class="profile-textarea" placeholder="Описание" rows="3" maxlength="80"></textarea>
+          <label class="field-label" for="editHandle">@юзернейм</label>
+          <input id="editHandle" type="text" placeholder="@юзернейм" required />
+          <div class="profile-actions">
+            <button id="profileCancelBtn" class="btn btn-ghost" type="button">Отмена</button>
+            <button class="btn" type="submit">Сохранить</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+    <script>
+      const keys = {
+        users: "apple_single_users",
+        session: "apple_single_session",
+        theme: "apple_single_theme",
+        feed: "apple_single_feed",
+        presence: "apple_single_presence",
+        queue: "apple_single_queue"
+      };
+      const sharedSync = {
+        state: "/sync/state",
+        patch: "/sync/patch"
+      };
+
+      const $ = (id) => document.getElementById(id);
+      const authView = $("authView");
+      const menuView = $("menuView");
+      const panelTrack = $("panelTrack");
+      const loginTab = $("loginTab");
+      const registerTab = $("registerTab");
+      const themeToggle = $("themeToggle");
+      const welcomeText = $("welcomeText");
+      const userRankList = $("userRankList");
+      const playBtn = $("playBtn");
+      const gameStatus = $("gameStatus");
+      const matchStatus = $("matchStatus");
+      const matchPlayers = $("matchPlayers");
+      const matchProgressBar = $("matchProgressBar");
+      const loginError = $("loginError");
+      const profileName = $("profileName");
+      const profileRating = $("profileRating");
+      const profileBio = $("profileBio");
+      const profileHandle = $("profileHandle");
+      const profileAvatar = $("profileAvatar");
+      const profileEditBtn = $("profileEditBtn");
+      const profileEditModal = $("profileEditModal");
+      const profileEditClose = $("profileEditClose");
+      const profileEditForm = $("profileEditForm");
+      const editName = $("editName");
+      const editBio = $("editBio");
+      const editHandle = $("editHandle");
+      const profileAvatarEdit = $("profileAvatarEdit");
+      const avatarUpload = $("avatarUpload");
+      const profileCancelBtn = $("profileCancelBtn");
+      const feedForm = $("feedForm");
+      const feedInput = $("feedInput");
+      const feedList = $("feedList");
+      const feedComposeBtn = $("feedComposeBtn");
+      const feedSubmitBtn = feedForm.querySelector("button[type='submit']");
+      const onlineBadge = $("onlineBadge");
+      const tabProfile = $("tabProfile");
+      const tabFeed = $("tabFeed");
+      const tabHome = $("tabHome");
+      const tabTour = $("tabTour");
+      const tabMore = $("tabMore");
+      const menuSwipeTrack = $("menuSwipeTrack");
+      const menuSwipeWrap = menuSwipeTrack.parentElement;
+      const matchModal = $("matchModal");
+      const matchClose = $("matchClose");
+
+      const loginForm = $("loginForm");
+      const registerForm = $("registerForm");
+      const logoutBtn = $("logoutBtn");
+      const fxTargets = document.querySelectorAll(".card, .quiz-copy");
+      let matchmakingTimer = null;
+      let presenceTimer = null;
+      let currentMenuIndex = 2;
+      let touchStartX = 0;
+      let currentSessionUser = "";
+      let pendingAvatarData = "";
+      let sharedSyncEnabled = false;
+      let sharedSyncTimer = null;
+      let sharedSyncDebounce = null;
+      let isApplyingSharedState = false;
+
+      const safeJSON = (raw, fallback) => {
+        try { return JSON.parse(raw) ?? fallback; } catch { return fallback; }
+      };
+
+      const users = () => safeJSON(localStorage.getItem(keys.users), {});
+      const saveUsers = (value) => localStorage.setItem(keys.users, JSON.stringify(value));
+      const getFeed = () => safeJSON(localStorage.getItem(keys.feed), []);
+      const getPresence = () => safeJSON(localStorage.getItem(keys.presence), {});
+      const getQueue = () => safeJSON(localStorage.getItem(keys.queue), []);
+      const statsKey = (name) => `apple_single_profile_${name}`;
+      const scheduleSharedPatch = () => {
+        if (!sharedSyncEnabled || isApplyingSharedState) return;
+        clearTimeout(sharedSyncDebounce);
+        sharedSyncDebounce = setTimeout(async () => {
+          try {
+            await fetch(sharedSync.patch, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                feed: getFeed(),
+                presence: getPresence(),
+                queue: getQueue()
+              })
+            });
+          } catch {}
+        }, 220);
+      };
+      const saveFeed = (value) => {
+        localStorage.setItem(keys.feed, JSON.stringify(value));
+        scheduleSharedPatch();
+      };
+      const savePresence = (value) => {
+        localStorage.setItem(keys.presence, JSON.stringify(value));
+        scheduleSharedPatch();
+      };
+      const saveQueue = (value) => {
+        localStorage.setItem(keys.queue, JSON.stringify(value));
+        scheduleSharedPatch();
+      };
+      const pullSharedState = async () => {
+        if (!sharedSyncEnabled) return;
+        try {
+          const res = await fetch(sharedSync.state, { cache: "no-store" });
+          if (!res.ok) return;
+          const data = await res.json();
+          if (!data || typeof data !== "object") return;
+          isApplyingSharedState = true;
+          if (Array.isArray(data.feed)) {
+            localStorage.setItem(keys.feed, JSON.stringify(data.feed.slice(0, 30)));
+          }
+          if (data.presence && typeof data.presence === "object") {
+            localStorage.setItem(keys.presence, JSON.stringify(data.presence));
+          }
+          if (Array.isArray(data.queue)) {
+            localStorage.setItem(keys.queue, JSON.stringify(data.queue));
+          }
+          isApplyingSharedState = false;
+          renderFeed();
+          updateOnlineBadge();
+        } catch {
+          isApplyingSharedState = false;
+        }
+      };
+      const initSharedSync = async () => {
+        try {
+          const res = await fetch(sharedSync.state, { cache: "no-store" });
+          if (!res.ok) return;
+          sharedSyncEnabled = true;
+          await pullSharedState();
+          clearInterval(sharedSyncTimer);
+          sharedSyncTimer = setInterval(pullSharedState, 1000);
+        } catch {}
+      };
+
+      const activeOnlineUsers = () => {
+        const now = Date.now();
+        const presence = getPresence();
+        const active = Object.entries(presence)
+          .filter(([, ts]) => now - Number(ts) < 25000)
+          .map(([name]) => name);
+        const cleaned = {};
+        active.forEach((name) => {
+          cleaned[name] = presence[name];
+        });
+        savePresence(cleaned);
+        return active;
+      };
+
+      const updateOnlineBadge = () => {
+        const count = activeOnlineUsers().length;
+        onlineBadge.textContent = `Online: ${count}`;
+      };
+
+      const applyTheme = (theme) => {
+        const dark = theme === "dark";
+        document.body.classList.toggle("dark", dark);
+        localStorage.setItem(keys.theme, dark ? "dark" : "light");
+        themeToggle.textContent = dark ? "☀️" : "🌙";
+      };
+
+      const setMode = (mode) => {
+        const register = mode === "register";
+        panelTrack.classList.toggle("register-mode", register);
+        loginTab.classList.toggle("active", !register);
+        registerTab.classList.toggle("active", register);
+
+        if (window.gsap) {
+          gsap.fromTo(".panel-track .panel", { opacity: 0.8 }, { opacity: 1, duration: 0.35, ease: "power2.out" });
+        }
+      };
+
+      const renderProfile = (account, username, profile) => {
+        const visibleName = account.name || account.nick || username;
+        const handleValue = profile.handle || `@${username}`;
+        const bioValue = (profile.bio || "Описание, которое поставил пользователь.").slice(0, 80);
+        const avatarLetter = (visibleName[0] || "A").toUpperCase();
+        const avatarData = profile.avatar || "";
+
+        profileName.textContent = visibleName;
+        profileRating.textContent = profile.rating ?? 1200;
+        profileBio.textContent = bioValue;
+        profileHandle.textContent = handleValue.startsWith("@") ? handleValue : `@${handleValue}`;
+        profileAvatar.textContent = avatarData ? "" : avatarLetter;
+        profileAvatarEdit.textContent = avatarData ? "" : avatarLetter;
+        profileAvatar.style.backgroundImage = avatarData ? `url('${avatarData}')` : "";
+        profileAvatarEdit.style.backgroundImage = avatarData ? `url('${avatarData}')` : "";
+        pendingAvatarData = avatarData;
+
+        editName.value = visibleName;
+        editBio.value = bioValue;
+        editHandle.value = handleValue.startsWith("@") ? handleValue : `@${handleValue}`;
+      };
+
+      const renderFeed = () => {
+        const posts = getFeed();
+        if (!posts.length) {
+          feedList.innerHTML = `<div class="feed-item">Пока пусто. Напишите первый пост ✨</div>`;
+          return;
+        }
+        feedList.innerHTML = posts
+          .map((post) => `
+            <article class="feed-item">
+              <div class="feed-top">
+                <span class="feed-author">${post.author}</span>
+                <span class="feed-time">${post.time}</span>
+              </div>
+              <div>${post.text}</div>
+              <div class="feed-actions">
+                <button class="feed-like" data-id="${post.id}">❤ ${post.likes}</button>
+              </div>
+            </article>
+          `)
+          .join("");
+      };
+
+      const leaderboardData = () => {
+        const list = users();
+        return Object.entries(list)
+          .map(([username, account]) => {
+            const profile = safeJSON(localStorage.getItem(statsKey(username)), { rating: 1200, matches: 0, wins: 0 });
+            return {
+              username,
+              displayName: account.name || account.nick || username,
+              rating: Number(profile.rating) || 1200,
+              matches: Number(profile.matches) || 0,
+              wins: Number(profile.wins) || 0
+            };
+          })
+          .sort((a, b) => b.rating - a.rating || b.wins - a.wins || b.matches - a.matches || a.username.localeCompare(b.username));
+      };
+
+      const renderLeaderboard = (currentUsername) => {
+        const leaderboard = leaderboardData();
+        if (!leaderboard.length) {
+          userRankList.innerHTML = "<li>Пока нет игроков в рейтинге.</li>";
+          return;
+        }
+
+        const currentIndex = leaderboard.findIndex((player) => player.username === currentUsername);
+        const aroundCurrent = currentIndex >= 0
+          ? leaderboard.slice(Math.max(0, currentIndex - 1), currentIndex + 2)
+          : leaderboard.slice(0, 3);
+
+        userRankList.innerHTML = aroundCurrent
+          .map((player) => {
+            const rank = leaderboard.findIndex((item) => item.username === player.username) + 1;
+            const you = player.username === currentUsername ? " (вы)" : "";
+            return `<li>${rank}. ${player.displayName} — ${player.rating}${you}</li>`;
+          })
+          .join("");
+      };
+
+      const openMenu = (username) => {
+        const normalizedSession = username.toLowerCase();
+        currentSessionUser = normalizedSession;
+        localStorage.setItem(keys.session, normalizedSession);
+        authView.classList.add("hidden");
+        menuView.classList.remove("hidden");
+        const profile = safeJSON(localStorage.getItem(statsKey(normalizedSession)), { rating: 1200, matches: 0, wins: 0 });
+        const list = users();
+        const account = list[normalizedSession] || list[username] || {};
+        const visibleName = account.name || account.nick || username;
+        welcomeText.textContent = `Добро пожаловать, ${visibleName}!`;
+        renderLeaderboard(normalizedSession);
+        renderProfile(account, username, profile);
+        renderFeed();
+        const presence = getPresence();
+        presence[normalizedSession] = Date.now();
+        savePresence(presence);
+        clearInterval(presenceTimer);
+        presenceTimer = setInterval(() => {
+          const data = getPresence();
+          data[normalizedSession] = Date.now();
+          savePresence(data);
+          updateOnlineBadge();
+        }, 8000);
+        updateOnlineBadge();
+        const isAdmin = normalizedSession === "admin";
+        feedComposeBtn.classList.toggle("hidden", !isAdmin);
+        feedForm.classList.add("hidden");
+        feedSubmitBtn.disabled = !isAdmin;
+        feedInput.disabled = !isAdmin;
+        setMenuPage("home");
+        resetMatchmaking();
+
+        if (window.gsap) {
+          gsap.fromTo("#menuView .anim", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.65, stagger: 0.1, ease: "power3.out" });
+        }
+      };
+
+      const openAuth = () => {
+        clearInterval(matchmakingTimer);
+        clearInterval(presenceTimer);
+        if (currentSessionUser) {
+          const presence = getPresence();
+          delete presence[currentSessionUser];
+          savePresence(presence);
+          const queue = getQueue().filter((name) => name !== currentSessionUser);
+          saveQueue(queue);
+        }
+        localStorage.removeItem(keys.session);
+        authView.classList.remove("hidden");
+        menuView.classList.add("hidden");
+        matchModal.classList.add("hidden");
+        profileEditModal.classList.add("hidden");
+        loginError.classList.add("hidden");
+        loginForm.reset();
+        registerForm.reset();
+        setMode("login");
+        updateOnlineBadge();
+
+        if (window.gsap) {
+          gsap.fromTo("#authView .card, #authView .form > *", { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, stagger: 0.06, ease: "power3.out" });
+        }
+      };
+
+      const menuIndexes = {
+        profile: 0,
+        feed: 1,
+        home: 2,
+        tour: 3,
+        more: 4
+      };
+
+      const setMenuPage = (page) => {
+        const nextIndex = menuIndexes[page] ?? 2;
+        currentMenuIndex = nextIndex;
+        menuSwipeTrack.style.transform = `translateX(-${nextIndex * 20}%)`;
+
+        tabProfile.classList.toggle("active", nextIndex === 0);
+        tabFeed.classList.toggle("active", nextIndex === 1);
+        tabHome.classList.toggle("active", nextIndex === 2);
+        tabTour.classList.toggle("active", nextIndex === 3);
+        tabMore.classList.toggle("active", nextIndex === 4);
+      };
+
+      const openEditProfile = () => {
+        avatarUpload.value = "";
+        profileEditModal.classList.remove("hidden");
+      };
+      const closeEditProfile = () => profileEditModal.classList.add("hidden");
+
+      const filled = (...fields) => fields.every((el) => el.value.trim());
+      const isUsernameValid = (username) => username.length >= 4 && username.length <= 15;
+
+      const resetMatchmaking = () => {
+        clearInterval(matchmakingTimer);
+        if (currentSessionUser) {
+          const queue = getQueue().filter((name) => name !== currentSessionUser);
+          saveQueue(queue);
+        }
+        playBtn.disabled = false;
+        playBtn.textContent = "ИГРАТЬ";
+        matchStatus.textContent = "Нажмите «Играть», чтобы начать подбор соперников.";
+        matchPlayers.innerHTML = "<li>Ожидание игроков...</li>";
+        matchProgressBar.style.width = "0%";
+        gameStatus.textContent = "Нажмите «Играть», чтобы открыть окно подбора.";
+      };
+
+      const startMatchmaking = () => {
+        const currentName = localStorage.getItem(keys.session);
+        if (!currentName) return;
+
+        clearInterval(matchmakingTimer);
+        playBtn.disabled = true;
+        playBtn.textContent = "Поиск...";
+        matchModal.classList.remove("hidden");
+        gameStatus.textContent = "Идёт подбор игроков...";
+        const active = activeOnlineUsers();
+        const queue = Array.from(new Set([...getQueue().filter((name) => active.includes(name)), currentName]));
+        saveQueue(queue);
+        matchStatus.textContent = "Подбор соперников: 1/4";
+        matchPlayers.innerHTML = `<li>${currentName} (вы)</li>`;
+        matchProgressBar.style.width = "25%";
+
+        matchmakingTimer = setInterval(() => {
+          const active = activeOnlineUsers();
+          const currentQueue = getQueue().filter((name) => active.includes(name));
+          saveQueue(currentQueue);
+          const lobby = currentQueue.slice(0, 4);
+          if (lobby.includes(currentName) && lobby.length >= 4) {
+            clearInterval(matchmakingTimer);
+            playBtn.disabled = false;
+            playBtn.textContent = "ИГРАТЬ";
+            matchStatus.textContent = "Команда собрана! 4/4 игрока готовы к старту.";
+            matchProgressBar.style.width = "100%";
+            gameStatus.textContent = "Игра началась! Удачи в матче.";
+            saveQueue(currentQueue.filter((name) => !lobby.includes(name)));
+            setTimeout(() => {
+              matchModal.classList.add("hidden");
+            }, 900);
+            return;
+          }
+
+          matchStatus.textContent = `Подбор соперников: ${lobby.length}/4`;
+          matchProgressBar.style.width = `${Math.min(4, lobby.length) * 25}%`;
+          matchPlayers.innerHTML = (lobby.length ? lobby : [currentName])
+            .map((name, idx) => `<li>${idx + 1}. ${name}${name === currentName ? " (вы)" : ""}</li>`)
+            .join("");
+        }, 1300);
+      };
+
+      registerForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const nameField = $("registerName");
+        const username = $("registerUsername");
+        const pass = $("registerPass");
+        const passRepeat = $("registerPassRepeat");
+        if (!filled(nameField, username, pass, passRepeat)) return;
+
+        const usernameRaw = username.value.trim();
+        const normalizedUsername = usernameRaw.toLowerCase();
+        if (!isUsernameValid(normalizedUsername)) return;
+        if (pass.value.trim() !== passRepeat.value.trim()) return;
+
+        const list = users();
+        if (list[normalizedUsername]) return;
+        list[normalizedUsername] = {
+          name: nameField.value.trim(),
+          password: pass.value.trim()
+        };
+        saveUsers(list);
+        openMenu(normalizedUsername);
+      });
+
+      loginForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const username = $("loginUsername");
+        const pass = $("loginPass");
+        if (!filled(username, pass)) return;
+
+        const list = users();
+        const user = username.value.trim().toLowerCase();
+        const pwd = pass.value.trim();
+        if (list[user] && list[user].password === pwd) {
+          loginError.classList.add("hidden");
+          openMenu(user);
+        } else {
+          loginError.classList.remove("hidden");
+        }
+      });
+
+      logoutBtn.addEventListener("click", openAuth);
+      loginTab.addEventListener("click", () => setMode("login"));
+      registerTab.addEventListener("click", () => setMode("register"));
+      themeToggle.addEventListener("click", () => applyTheme(document.body.classList.contains("dark") ? "light" : "dark"));
+      playBtn.addEventListener("click", startMatchmaking);
+      tabProfile.addEventListener("click", () => setMenuPage("profile"));
+      tabFeed.addEventListener("click", () => setMenuPage("feed"));
+      tabHome.addEventListener("click", () => setMenuPage("home"));
+      tabTour.addEventListener("click", () => setMenuPage("tour"));
+      tabMore.addEventListener("click", () => setMenuPage("more"));
+      feedComposeBtn.addEventListener("click", () => {
+        if (currentSessionUser !== "admin") return;
+        const willOpen = feedForm.classList.contains("hidden");
+        feedForm.classList.toggle("hidden", !willOpen);
+        if (willOpen) feedInput.focus();
+      });
+      feedForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        if (currentSessionUser !== "admin") return;
+        const text = feedInput.value.trim();
+        if (!text || !currentSessionUser) return;
+        const author = `@${currentSessionUser}`;
+        const posts = getFeed();
+        posts.unshift({
+          id: Date.now().toString(36),
+          author,
+          text,
+          likes: 0,
+          time: new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })
+        });
+        saveFeed(posts.slice(0, 30));
+        feedInput.value = "";
+        feedForm.classList.add("hidden");
+        renderFeed();
+      });
+      feedList.addEventListener("click", (e) => {
+        const likeBtn = e.target.closest(".feed-like");
+        if (!likeBtn) return;
+        const id = likeBtn.dataset.id;
+        const posts = getFeed();
+        const post = posts.find((item) => item.id === id);
+        if (!post) return;
+        post.likes += 1;
+        saveFeed(posts);
+        renderFeed();
+      });
+      profileEditBtn.addEventListener("click", openEditProfile);
+      profileEditClose.addEventListener("click", closeEditProfile);
+      profileCancelBtn.addEventListener("click", closeEditProfile);
+      profileEditModal.addEventListener("click", (e) => {
+        if (e.target === profileEditModal) closeEditProfile();
+      });
+      profileAvatarEdit.addEventListener("click", () => {
+        avatarUpload.click();
+      });
+      avatarUpload.addEventListener("change", () => {
+        const file = avatarUpload.files && avatarUpload.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          pendingAvatarData = String(reader.result || "");
+          profileAvatarEdit.style.backgroundImage = pendingAvatarData ? `url('${pendingAvatarData}')` : "";
+          profileAvatarEdit.textContent = "";
+        };
+        reader.readAsDataURL(file);
+      });
+      profileEditForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        if (!currentSessionUser) return;
+        const list = users();
+        const account = list[currentSessionUser];
+        if (!account) return;
+        account.name = editName.value.trim() || account.name;
+        saveUsers(list);
+
+        const profile = safeJSON(localStorage.getItem(statsKey(currentSessionUser)), { rating: 1200, matches: 0, wins: 0 });
+        profile.bio = editBio.value.trim().slice(0, 80);
+        profile.handle = editHandle.value.trim();
+        profile.avatar = pendingAvatarData || profile.avatar || "";
+        localStorage.setItem(statsKey(currentSessionUser), JSON.stringify(profile));
+
+        renderProfile(account, currentSessionUser, profile);
+        renderLeaderboard(currentSessionUser);
+        welcomeText.textContent = `Добро пожаловать, ${account.name || currentSessionUser}!`;
+        closeEditProfile();
+      });
+      document.querySelectorAll(".eye-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const target = document.getElementById(btn.dataset.target);
+          if (!target) return;
+          const isPassword = target.type === "password";
+          target.type = isPassword ? "text" : "password";
+          btn.classList.toggle("is-open", isPassword);
+        });
+      });
+      $("loginUsername").addEventListener("input", () => loginError.classList.add("hidden"));
+      $("loginPass").addEventListener("input", () => loginError.classList.add("hidden"));
+      matchClose.addEventListener("click", () => {
+        matchModal.classList.add("hidden");
+        resetMatchmaking();
+      });
+      matchModal.addEventListener("click", (e) => {
+        if (e.target === matchModal) {
+          matchModal.classList.add("hidden");
+          resetMatchmaking();
+        }
+      });
+      window.addEventListener("beforeunload", () => {
+        if (!currentSessionUser) return;
+        const presence = getPresence();
+        delete presence[currentSessionUser];
+        savePresence(presence);
+        const queue = getQueue().filter((name) => name !== currentSessionUser);
+        saveQueue(queue);
+      });
+      window.addEventListener("storage", (e) => {
+        if (e.key === keys.feed) renderFeed();
+        if (e.key === keys.presence) updateOnlineBadge();
+        if (e.key === keys.users || (e.key && e.key.startsWith("apple_single_profile_"))) {
+          renderLeaderboard(currentSessionUser);
+        }
+        if (e.key === keys.queue && matchmakingTimer) {
+          // Let matchmaking loop pick updates on next tick.
+        }
+      });
+      menuSwipeWrap.addEventListener("touchstart", (e) => {
+        touchStartX = e.changedTouches[0].clientX;
+      }, { passive: true });
+      menuSwipeWrap.addEventListener("touchend", (e) => {
+        const delta = e.changedTouches[0].clientX - touchStartX;
+        if (Math.abs(delta) < 40) return;
+        const next = delta < 0 ? Math.min(4, currentMenuIndex + 1) : Math.max(0, currentMenuIndex - 1);
+        const page = Object.keys(menuIndexes).find((key) => menuIndexes[key] === next) || "home";
+        setMenuPage(page);
+      }, { passive: true });
+
+      fxTargets.forEach((el) => {
+        el.addEventListener("mousemove", (event) => {
+          if (window.matchMedia("(max-width: 860px)").matches) return;
+          const rect = el.getBoundingClientRect();
+          const x = (event.clientX - rect.left) / rect.width - 0.5;
+          const y = (event.clientY - rect.top) / rect.height - 0.5;
+          el.style.transform = `perspective(1000px) rotateY(${x * 7}deg) rotateX(${y * -7}deg) translateY(-4px)`;
+        });
+
+        el.addEventListener("mouseleave", () => {
+          el.style.transform = "";
+        });
+      });
+
+      (() => {
+        applyTheme(localStorage.getItem(keys.theme) || "light");
+        initSharedSync();
+        const session = localStorage.getItem(keys.session);
+        updateOnlineBadge();
+        session ? openMenu(session) : openAuth();
+
+        if (window.gsap) {
+          gsap.fromTo(".theme-toggle, .card", { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7, stagger: 0.08, ease: "power3.out" });
+        }
+      })();
+    </script>
+  </body>
+</html>
