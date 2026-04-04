@@ -1,0 +1,13 @@
+{
+    "name": "hm-sync-server",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Lightweight sync backend for GitHub Pages frontend",
+    "main": "server.js",
+    "scripts": {
+      "start": "node server.js"
+    },
+    "engines": {
+      "node": ">=18"
+    }
+  }
