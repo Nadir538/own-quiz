@@ -337,6 +337,59 @@
         gap: 12px;
       }
 
+      .home-hero {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .hero-tile {
+        border: 1px solid var(--card-border);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.08);
+        padding: 10px;
+      }
+
+      .hero-tile span {
+        display: block;
+        color: var(--text-muted);
+        font-size: .82rem;
+      }
+
+      .hero-tile strong {
+        display: block;
+        margin-top: 4px;
+        font-size: 1.2rem;
+      }
+
+      .quick-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .quick-card {
+        border: 1px solid var(--card-border);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.08);
+        padding: 12px;
+        text-align: left;
+        color: var(--text);
+        cursor: pointer;
+      }
+
+      .quick-card h4 {
+        margin: 0 0 6px;
+      }
+
+      .quick-card p {
+        margin: 0;
+        color: var(--text-muted);
+        font-size: .9rem;
+      }
+
       .menu-swipe-wrap {
         overflow: hidden;
       }
@@ -859,6 +912,8 @@
         .play-btn { min-width: 100%; }
         .bottom-tabs { grid-template-columns: 1fr 1fr 1fr 1fr 1fr; font-size: .82rem; }
         .profile-grid { grid-template-columns: 1fr; }
+        .home-hero { grid-template-columns: 1fr; }
+        .quick-grid { grid-template-columns: 1fr; }
       }
 
       @media (min-width: 860px) {
@@ -996,6 +1051,42 @@
               </section>
 
               <section class="menu-page">
+                <article class="rank-card">
+                  <h3>Главное меню</h3>
+                  <div class="home-hero">
+                    <div class="hero-tile">
+                      <span>Рейтинг</span>
+                      <strong id="heroRating">★1200</strong>
+                    </div>
+                    <div class="hero-tile">
+                      <span>Короны</span>
+                      <strong id="heroCrowns">👑0</strong>
+                    </div>
+                    <div class="hero-tile">
+                      <span>Сыграно</span>
+                      <strong id="heroMatches">0</strong>
+                    </div>
+                  </div>
+                  <div class="quick-grid">
+                    <button id="quickLeaderboardBtn" class="quick-card" type="button">
+                      <h4>🏆 Рейтинг</h4>
+                      <p>Перейти к лучшим игрокам сезона</p>
+                    </button>
+                    <button id="quickTournamentsBtn" class="quick-card" type="button">
+                      <h4>⚔️ Турниры</h4>
+                      <p>Открыть список активных событий</p>
+                    </button>
+                    <button id="quickProfileBtn" class="quick-card" type="button">
+                      <h4>👤 Профиль</h4>
+                      <p>Быстро изменить имя, аватар и описание</p>
+                    </button>
+                    <button id="quickSupportBtn" class="quick-card" type="button">
+                      <h4>💬 Поддержка</h4>
+                      <p>Связаться с поддержкой проекта</p>
+                    </button>
+                  </div>
+                </article>
+
                 <div class="rank-grid">
                   <article class="rank-card">
                     <h3>Тройка лидеров</h3>
@@ -1221,6 +1312,13 @@
       const publicProfileClose = $("publicProfileClose");
       const publicProfileTitle = $("publicProfileTitle");
       const publicProfileBody = $("publicProfileBody");
+      const heroRating = $("heroRating");
+      const heroCrowns = $("heroCrowns");
+      const heroMatches = $("heroMatches");
+      const quickLeaderboardBtn = $("quickLeaderboardBtn");
+      const quickTournamentsBtn = $("quickTournamentsBtn");
+      const quickProfileBtn = $("quickProfileBtn");
+      const quickSupportBtn = $("quickSupportBtn");
 
       const loginForm = $("loginForm");
       const registerForm = $("registerForm");
@@ -1427,6 +1525,12 @@
         editHandle.value = handleValue.startsWith("@") ? handleValue : `@${handleValue}`;
       };
 
+      const renderHomeMenu = (profile) => {
+        heroRating.textContent = `★${Number(profile.rating) || 1200}`;
+        heroCrowns.textContent = `👑${Number(profile.crowns) || 0}`;
+        heroMatches.textContent = String(Number(profile.matches) || 0);
+      };
+
       const renderFeed = () => {
         const posts = getFeed();
         if (!posts.length) {
@@ -1508,6 +1612,7 @@
         welcomeText.textContent = `Добро пожаловать, ${visibleName}!`;
         renderLeaderboard(normalizedSession);
         renderProfile(account, username, profile);
+        renderHomeMenu(profile);
         renderFeed();
         const presence = getPresence();
         presence[normalizedSession] = Date.now();
@@ -1674,6 +1779,7 @@
             const list = users();
             const account = list[currentSessionUser] || {};
             renderProfile(account, currentSessionUser, profile);
+            renderHomeMenu(profile);
             renderLeaderboard(currentSessionUser);
             startCooldownWatcher();
             matchStatus.textContent = `Игра окончена: ${activeCorrect}/${activeQuiz.length} правильных. Награда: +${crowns} 👑`;
@@ -1684,7 +1790,7 @@
           const q = activeQuiz[activeQuestionIndex];
           let secondsLeft = 10;
           let answered = false;
-          matchStatus.textContent = `Ржим: ${selectedMode}`;
+          matchStatus.textContent = `Режим: ${selectedMode}`;
           quizCounter.textContent = `Вопрос ${activeQuestionIndex + 1}/${activeQuiz.length}`;
           quizTimer.textContent = `${secondsLeft} сек`;
           quizTimer.parentElement.classList.toggle("hidden", !getSettings().showTimer);
@@ -1775,6 +1881,18 @@
       tabHome.addEventListener("click", () => setMenuPage("home"));
       tabTour.addEventListener("click", () => setMenuPage("tour"));
       tabMore.addEventListener("click", () => setMenuPage("more"));
+      quickLeaderboardBtn.addEventListener("click", () => {
+        setMenuPage("home");
+        document.querySelector("#topLeaders")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      quickTournamentsBtn.addEventListener("click", () => setMenuPage("tour"));
+      quickProfileBtn.addEventListener("click", () => {
+        setMenuPage("profile");
+        openEditProfile();
+      });
+      quickSupportBtn.addEventListener("click", () => {
+        window.open("https://t.me/ogosixseven", "_blank", "noopener,noreferrer");
+      });
       modeSelect.addEventListener("click", (e) => {
         const btn = e.target.closest(".mode-btn");
         if (!btn) return;
@@ -1890,6 +2008,7 @@
         localStorage.setItem(statsKey(currentSessionUser), JSON.stringify(profile));
 
         renderProfile(account, currentSessionUser, profile);
+        renderHomeMenu(profile);
         renderLeaderboard(currentSessionUser);
         welcomeText.textContent = `Добро пожаловать, ${account.name || currentSessionUser}!`;
         closeEditProfile();
@@ -1938,6 +2057,7 @@
             const account = list[currentSessionUser] || {};
             const profile = safeJSON(localStorage.getItem(statsKey(currentSessionUser)), { rating: 1200, matches: 0, wins: 0, crowns: 0, lastPlayedAt: 0 });
             renderProfile(account, currentSessionUser, profile);
+            renderHomeMenu(profile);
           }
         }
         if (e.key === keys.queue && matchmakingTimer) {
