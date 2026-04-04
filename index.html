@@ -921,6 +921,7 @@
               <div class="dash-meta">
                 <span id="onlineBadge" class="badge">Online: 1</span>
                 <span class="badge violet">Сезон #4</span>
+                <span id="syncBadge" class="badge">Sync: off</span>
               </div>
             </div>
             <button id="logoutBtn" class="btn" type="button">Выйти</button>
@@ -980,8 +981,13 @@
                 </div>
 
                 <div class="play-wrap">
+                  <div id="modeSelect" class="dash-meta" style="margin-bottom:10px;">
+                    <button class="btn btn-ghost mode-btn" data-mode="история" type="button">История</button>
+                    <button class="btn btn-ghost mode-btn" data-mode="география" type="button">География</button>
+                    <button class="btn btn-ghost mode-btn" data-mode="спорт" type="button">Спорт</button>
+                  </div>
                   <button id="playBtn" class="btn play-btn" type="button">ИГРАТЬ</button>
-                  <p id="gameStatus" class="dash-note">Нажмите «Играть», чтобы открыть окно подбора.</p>
+                  <p id="gameStatus" class="dash-note">Выберите режим и нажмите «Играть», чтобы начать викторину.</p>
                 </div>
               </section>
 
@@ -1023,15 +1029,17 @@
     <section id="matchModal" class="profile-panel hidden">
       <div class="profile-card anim">
         <div class="profile-head">
-          <h3 class="profile-title">Подбор соперников</h3>
+          <h3 class="profile-title">Викторина</h3>
           <button id="matchClose" class="btn profile-close" type="button">✕</button>
         </div>
         <div class="match-box modal">
-          <p id="matchStatus" class="match-status">Нажмите «Играть», чтобы начать подбор соперников.</p>
-          <div class="match-progress"><span id="matchProgressBar"></span></div>
-          <ol id="matchPlayers" class="match-players">
-            <li>Ожидание игроков...</li>
-          </ol>
+          <p id="matchStatus" class="match-status">Выберите режим и нажмите «Играть».</p>
+          <div class="dash-meta" style="margin-bottom:8px;">
+            <span id="quizCounter" class="badge violet">Вопрос 0/20</span>
+            <span id="quizTimer" class="badge">10 сек</span>
+          </div>
+          <h3 id="quizQuestion" style="margin:0 0 10px;">—</h3>
+          <div id="quizOptions" class="feed-list"></div>
         </div>
       </div>
     </section>
@@ -1067,12 +1075,23 @@
         theme: "apple_single_theme",
         feed: "apple_single_feed",
         presence: "apple_single_presence",
-        queue: "apple_single_queue"
+        queue: "apple_single_queue",
+        syncBase: "apple_single_sync_base"
       };
-      const sharedSync = {
-        state: "/sync/state",
-        patch: "/sync/patch"
+      const buildSyncConfig = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const syncParam = (urlParams.get("sync") || "").trim();
+        if (syncParam) {
+          localStorage.setItem(keys.syncBase, syncParam.replace(/\/+$/, ""));
+        }
+        const base = (localStorage.getItem(keys.syncBase) || window.location.origin).replace(/\/+$/, "");
+        return {
+          base,
+          state: `${base}/sync/state`,
+          patch: `${base}/sync/patch`
+        };
       };
+      const sharedSync = buildSyncConfig();
 
       const $ = (id) => document.getElementById(id);
       const authView = $("authView");
@@ -1086,8 +1105,11 @@
       const playBtn = $("playBtn");
       const gameStatus = $("gameStatus");
       const matchStatus = $("matchStatus");
-      const matchPlayers = $("matchPlayers");
-      const matchProgressBar = $("matchProgressBar");
+      const quizCounter = $("quizCounter");
+      const quizTimer = $("quizTimer");
+      const quizQuestion = $("quizQuestion");
+      const quizOptions = $("quizOptions");
+      const modeSelect = $("modeSelect");
       const loginError = $("loginError");
       const profileName = $("profileName");
       const profileRating = $("profileRating");
@@ -1110,6 +1132,7 @@
       const feedComposeBtn = $("feedComposeBtn");
       const feedSubmitBtn = feedForm.querySelector("button[type='submit']");
       const onlineBadge = $("onlineBadge");
+      const syncBadge = $("syncBadge");
       const tabProfile = $("tabProfile");
       const tabFeed = $("tabFeed");
       const tabHome = $("tabHome");
@@ -1125,6 +1148,7 @@
       const logoutBtn = $("logoutBtn");
       const fxTargets = document.querySelectorAll(".card, .quiz-copy");
       let matchmakingTimer = null;
+      let quizTimerRef = null;
       let presenceTimer = null;
       let currentMenuIndex = 2;
       let touchStartX = 0;
@@ -1134,6 +1158,11 @@
       let sharedSyncTimer = null;
       let sharedSyncDebounce = null;
       let isApplyingSharedState = false;
+      let selectedMode = "история";
+      let quizData = [];
+      let activeQuiz = [];
+      let activeQuestionIndex = 0;
+      let activeCorrect = 0;
 
       const safeJSON = (raw, fallback) => {
         try { return JSON.parse(raw) ?? fallback; } catch { return fallback; }
@@ -1145,6 +1174,43 @@
       const getPresence = () => safeJSON(localStorage.getItem(keys.presence), {});
       const getQueue = () => safeJSON(localStorage.getItem(keys.queue), []);
       const statsKey = (name) => `apple_single_profile_${name}`;
+      const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
+      const parseQuizText = (text) => {
+        const trimmed = text.trim();
+        if (!trimmed) return [];
+        if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+          const parsed = safeJSON(trimmed, []);
+          const source = Array.isArray(parsed) ? parsed : parsed.questions || [];
+          return source
+            .map((item) => ({
+              mode: String(item.mode || "").toLowerCase(),
+              question: String(item.question || ""),
+              options: Array.isArray(item.options) ? item.options.map((x) => String(x)) : [],
+              answer: Number(item.answer)
+            }))
+            .filter((q) => q.mode && q.question && q.options.length >= 2 && Number.isInteger(q.answer));
+        }
+        return trimmed
+          .split("\n")
+          .map((line) => line.trim())
+          .filter((line) => line && !line.startsWith("#"))
+          .map((line) => line.split("|").map((x) => x.trim()))
+          .filter((parts) => parts.length >= 7)
+          .map((parts) => ({
+            mode: parts[0].toLowerCase(),
+            question: parts[1],
+            options: parts.slice(2, 6),
+            answer: Number(parts[6])
+          }))
+          .filter((q) => q.mode && q.question && q.options.length === 4 && Number.isInteger(q.answer));
+      };
+      const loadQuizBase = async () => {
+        try {
+          const res = await fetch("base.txt", { cache: "no-store" });
+          if (!res.ok) return;
+          quizData = parseQuizText(await res.text());
+        } catch {}
+      };
       const scheduleSharedPatch = () => {
         if (!sharedSyncEnabled || isApplyingSharedState) return;
         clearTimeout(sharedSyncDebounce);
@@ -1159,7 +1225,9 @@
                 queue: getQueue()
               })
             });
-          } catch {}
+          } catch {
+            syncBadge.textContent = "Sync: off";
+          }
         }, 220);
       };
       const saveFeed = (value) => {
@@ -1195,6 +1263,7 @@
           renderFeed();
           updateOnlineBadge();
         } catch {
+          syncBadge.textContent = "Sync: off";
           isApplyingSharedState = false;
         }
       };
@@ -1203,24 +1272,18 @@
           const res = await fetch(sharedSync.state, { cache: "no-store" });
           if (!res.ok) return;
           sharedSyncEnabled = true;
+          syncBadge.textContent = `Sync: on (${new URL(sharedSync.base).host})`;
           await pullSharedState();
           clearInterval(sharedSyncTimer);
-          sharedSyncTimer = setInterval(pullSharedState, 1000);
-        } catch {}
+          sharedSyncTimer = setInterval(pullSharedState, 400);
+        } catch {
+          syncBadge.textContent = "Sync: off";
+        }
       };
 
       const activeOnlineUsers = () => {
-        const now = Date.now();
         const presence = getPresence();
-        const active = Object.entries(presence)
-          .filter(([, ts]) => now - Number(ts) < 25000)
-          .map(([name]) => name);
-        const cleaned = {};
-        active.forEach((name) => {
-          cleaned[name] = presence[name];
-        });
-        savePresence(cleaned);
-        return active;
+        return Object.keys(presence); 
       };
 
       const updateOnlineBadge = () => {
@@ -1422,59 +1485,82 @@
 
       const resetMatchmaking = () => {
         clearInterval(matchmakingTimer);
-        if (currentSessionUser) {
-          const queue = getQueue().filter((name) => name !== currentSessionUser);
-          saveQueue(queue);
-        }
+        clearInterval(quizTimerRef);
         playBtn.disabled = false;
         playBtn.textContent = "ИГРАТЬ";
-        matchStatus.textContent = "Нажмите «Играть», чтобы начать подбор соперников.";
-        matchPlayers.innerHTML = "<li>Ожидание игроков...</li>";
-        matchProgressBar.style.width = "0%";
-        gameStatus.textContent = "Нажмите «Играть», чтобы открыть окно подбора.";
+        matchStatus.textContent = "Выберите режим и нажмите «Играть».";
+        quizCounter.textContent = "Вопрос 0/20";
+        quizTimer.textContent = "10 сек";
+        quizQuestion.textContent = "—";
+        quizOptions.innerHTML = "";
+        gameStatus.textContent = `Режим: ${selectedMode}. Нажмите «Играть», чтобы начать викторину.`;
       };
 
       const startMatchmaking = () => {
-        const currentName = localStorage.getItem(keys.session);
-        if (!currentName) return;
-
-        clearInterval(matchmakingTimer);
+        const modeQuestions = quizData.filter((q) => q.mode === selectedMode.toLowerCase());
+        if (modeQuestions.length < 500) {
+          gameStatus.textContent = `Недостаточно вопросов для режима «${selectedMode}» в base.txt (нужно минимум 500).`;
+          return;
+        }
+        const pool = shuffle(modeQuestions).slice(0, 500);
+        activeQuiz = shuffle(pool).slice(0, 20);
+        activeQuestionIndex = 0;
+        activeCorrect = 0;
         playBtn.disabled = true;
-        playBtn.textContent = "Поиск...";
+        playBtn.textContent = "Идёт игра...";
         matchModal.classList.remove("hidden");
-        gameStatus.textContent = "Идёт подбор игроков...";
-        const active = activeOnlineUsers();
-        const queue = Array.from(new Set([...getQueue().filter((name) => active.includes(name)), currentName]));
-        saveQueue(queue);
-        matchStatus.textContent = "Подбор соперников: 1/4";
-        matchPlayers.innerHTML = `<li>${currentName} (вы)</li>`;
-        matchProgressBar.style.width = "25%";
-
-        matchmakingTimer = setInterval(() => {
-          const active = activeOnlineUsers();
-          const currentQueue = getQueue().filter((name) => active.includes(name));
-          saveQueue(currentQueue);
-          const lobby = currentQueue.slice(0, 4);
-          if (lobby.includes(currentName) && lobby.length >= 4) {
-            clearInterval(matchmakingTimer);
+        gameStatus.textContent = `Режим «${selectedMode}» запущен.`;
+        const showQuestion = () => {
+          if (activeQuestionIndex >= activeQuiz.length) {
+            clearInterval(quizTimerRef);
+            matchStatus.textContent = `Игра окончена: ${activeCorrect}/${activeQuiz.length} правильных.`;
+            quizCounter.textContent = `Вопрос ${activeQuiz.length}/${activeQuiz.length}`;
+            quizTimer.textContent = "0 сек";
             playBtn.disabled = false;
             playBtn.textContent = "ИГРАТЬ";
-            matchStatus.textContent = "Команда собрана! 4/4 игрока готовы к старту.";
-            matchProgressBar.style.width = "100%";
-            gameStatus.textContent = "Игра началась! Удачи в матче.";
-            saveQueue(currentQueue.filter((name) => !lobby.includes(name)));
-            setTimeout(() => {
-              matchModal.classList.add("hidden");
-            }, 900);
             return;
           }
-
-          matchStatus.textContent = `Подбор соперников: ${lobby.length}/4`;
-          matchProgressBar.style.width = `${Math.min(4, lobby.length) * 25}%`;
-          matchPlayers.innerHTML = (lobby.length ? lobby : [currentName])
-            .map((name, idx) => `<li>${idx + 1}. ${name}${name === currentName ? " (вы)" : ""}</li>`)
+          const q = activeQuiz[activeQuestionIndex];
+          let secondsLeft = 10;
+          let answered = false;
+          matchStatus.textContent = `Режим: ${selectedMode}`;
+          quizCounter.textContent = `Вопрос ${activeQuestionIndex + 1}/${activeQuiz.length}`;
+          quizTimer.textContent = `${secondsLeft} сек`;
+          quizQuestion.textContent = q.question;
+          quizOptions.innerHTML = q.options
+            .map((opt, idx) => `<button class=\"btn btn-ghost quiz-opt\" data-idx=\"${idx}\" type=\"button\">${opt}</button>`)
             .join("");
-        }, 1300);
+            clearInterval(quizTimerRef);
+          quizTimerRef = setInterval(() => {
+            secondsLeft -= 1;
+            quizTimer.textContent = `${Math.max(0, secondsLeft)} сек`;
+            if (secondsLeft <= 0 && !answered) {
+              answered = true;
+              clearInterval(quizTimerRef);
+              activeQuestionIndex += 1;
+              setTimeout(showQuestion, 450);
+            }
+          }, 1000);
+          quizOptions.querySelectorAll(".quiz-opt").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              if (answered) return;
+              answered = true;
+              clearInterval(quizTimerRef);
+              const idx = Number(btn.dataset.idx);
+              const correctIdx = q.answer;
+              quizOptions.querySelectorAll(".quiz-opt").forEach((other, otherIdx) => {
+                if (otherIdx === correctIdx) other.style.background = "rgba(42, 197, 109, .35)";
+                if (otherIdx === idx && idx !== correctIdx) other.style.background = "rgba(228, 72, 72, .35)";
+              });
+              if (idx === correctIdx) activeCorrect += 1;
+              setTimeout(() => {
+                activeQuestionIndex += 1;
+                showQuestion();
+              }, 700);
+            });
+          });
+        };
+        showQuestion();
       };
 
       registerForm.addEventListener("submit", (e) => {
@@ -1527,6 +1613,15 @@
       tabHome.addEventListener("click", () => setMenuPage("home"));
       tabTour.addEventListener("click", () => setMenuPage("tour"));
       tabMore.addEventListener("click", () => setMenuPage("more"));
+      modeSelect.addEventListener("click", (e) => {
+        const btn = e.target.closest(".mode-btn");
+        if (!btn) return;
+        selectedMode = btn.dataset.mode || "история";
+        modeSelect.querySelectorAll(".mode-btn").forEach((item) => {
+          item.style.borderColor = item === btn ? "rgba(120, 188, 255, 0.75)" : "";
+        });
+        gameStatus.textContent = `Режим: ${selectedMode}. Нажмите «Играть», чтобы начать викторину.`;
+      });
       feedComposeBtn.addEventListener("click", () => {
         if (currentSessionUser !== "admin") return;
         const willOpen = feedForm.classList.contains("hidden");
@@ -1642,6 +1737,20 @@
           // Let matchmaking loop pick updates on next tick.
         }
       });
+      document.addEventListener("visibilitychange", () => {
+        if (!currentSessionUser || document.visibilityState !== "visible") return;
+        const presence = getPresence();
+        presence[currentSessionUser] = Date.now();
+        savePresence(presence);
+        pullSharedState();
+      });
+      window.addEventListener("focus", () => {
+        if (!currentSessionUser) return;
+        const presence = getPresence();
+        presence[currentSessionUser] = Date.now();
+        savePresence(presence);
+        pullSharedState();
+      });
       menuSwipeWrap.addEventListener("touchstart", (e) => {
         touchStartX = e.changedTouches[0].clientX;
       }, { passive: true });
@@ -1669,6 +1778,8 @@
 
       (() => {
         applyTheme(localStorage.getItem(keys.theme) || "light");
+        loadQuizBase();
+        initSharedSync();
         initSharedSync();
         const session = localStorage.getItem(keys.session);
         updateOnlineBadge();
