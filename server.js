@@ -1,4 +1,3 @@
-// server.js
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
@@ -12,7 +11,6 @@ const state = {
   presence: {},
   queue: []
 };
-
 const normalizeQueue = (queue) => Array.from(new Set((queue || []).filter(Boolean)));
 const cleanupState = () => {
   const active = new Set(Object.keys(state.presence));
@@ -62,7 +60,6 @@ const server = http.createServer((req, res) => {
     req.on("end", () => {
       try {
         const payload = JSON.parse(raw || "{}");
-
         if (Array.isArray(payload.feed)) {
           const mergedFeed = new Map();
           [...state.feed, ...payload.feed].forEach((post) => {
@@ -74,7 +71,6 @@ const server = http.createServer((req, res) => {
           });
           state.feed = Array.from(mergedFeed.values()).slice(0, 30);
         }
-
         if (payload.presence && typeof payload.presence === "object") {
           Object.entries(payload.presence).forEach(([name, ts]) => {
             const current = Number(state.presence[name] || 0);
@@ -82,11 +78,9 @@ const server = http.createServer((req, res) => {
             if (next > current) state.presence[name] = next;
           });
         }
-
         if (Array.isArray(payload.queue)) {
           state.queue = normalizeQueue([...state.queue, ...payload.queue]);
         }
-
         cleanupState();
         sendJson(res, 200, { ok: true });
       } catch {
