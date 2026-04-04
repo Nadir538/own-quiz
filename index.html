@@ -458,10 +458,39 @@
         line-height: 1.7;
       }
 
+      .leaderboard-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 8px;
+      }
+
+      .leaderboard-item {
+        width: 100%;
+        text-align: left;
+        border: 1px solid var(--card-border);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text);
+        padding: 9px 10px;
+        cursor: pointer;
+      }
+
+      .leaderboard-item:hover {
+        border-color: rgba(120, 188, 255, 0.75);
+      }
+
       .play-wrap {
         display: grid;
         place-items: center;
         margin: 6px 0 12px;
+      }
+
+      .cooldown-timer {
+        margin: 0 0 10px;
+        font-weight: 600;
+        color: var(--text-muted);
       }
 
       .play-btn {
@@ -742,6 +771,11 @@
         gap: 10px;
       }
 
+      .more-actions {
+        display: grid;
+        gap: 8px;
+      }
+
       .btn-ghost {
         background: rgba(255,255,255,.12);
         color: var(--text);
@@ -941,6 +975,7 @@
                     <h3 id="profileName">Имя</h3>
                     <span class="profile-star">★</span><span id="profileRating">1200</span>
                   </div>
+                  <p id="profileCrowns" class="profile-handle">👑 0 корон</p>
                   <p id="profileHandle" class="profile-handle">@username</p>
                   <p id="profileBio" class="profile-bio">Описание, которое поставил пользователь.</p>
                 </article>
@@ -964,19 +999,11 @@
                 <div class="rank-grid">
                   <article class="rank-card">
                     <h3>Тройка лидеров</h3>
-                    <ol>
-                      <li>User1</li>
-                      <li>User2</li>
-                      <li>User3</li>
-                    </ol>
+                    <ul id="topLeaders" class="leaderboard-list"></ul>
                   </article>
                   <article class="rank-card">
                     <h3>Ваше место в рейтинге</h3>
-                    <ul id="userRankList">
-                      <li>996. User996</li>
-                      <li>997. Вы</li>
-                      <li>998. User998</li>
-                    </ul>
+                    <ul id="userRankList" class="leaderboard-list"></ul>
                   </article>
                 </div>
 
@@ -986,6 +1013,7 @@
                     <button class="btn btn-ghost mode-btn" data-mode="география" type="button">География</button>
                     <button class="btn btn-ghost mode-btn" data-mode="спорт" type="button">Спорт</button>
                   </div>
+                  <p id="playCooldown" class="cooldown-timer">Играть можно прямо сейчас.</p>
                   <button id="playBtn" class="btn play-btn" type="button">ИГРАТЬ</button>
                   <p id="gameStatus" class="dash-note">Выберите режим и нажмите «Играть», чтобы начать викторину.</p>
                 </div>
@@ -1005,11 +1033,11 @@
               <section class="menu-page">
                 <article class="rank-card">
                   <h3>Ещё</h3>
-                  <ul class="event-list">
-                    <li>Настройки</li>
-                    <li>Поддержка</li>
-                    <li>О проекте</li>
-                  </ul>
+                  <div class="more-actions">
+                    <button id="settingsBtn" class="btn btn-ghost" type="button">Настройки</button>
+                    <a class="btn btn-ghost" href="https://t.me/ogosixseven" target="_blank" rel="noopener noreferrer">Поддержка</a>
+                    <button id="aboutBtn" class="btn btn-ghost" type="button">О проекте</button>
+                  </div>
                 </article>
               </section>
             </div>
@@ -1067,6 +1095,42 @@
       </div>
     </section>
 
+    <section id="settingsModal" class="profile-panel hidden">
+      <div class="profile-card anim">
+        <div class="profile-head">
+          <h3 class="profile-title">Настройки</h3>
+          <button id="settingsClose" class="btn profile-close" type="button">✕</button>
+        </div>
+        <div class="profile-settings">
+          <label class="profile-item">
+            <span>Тема</span>
+            <select id="themeSelect">
+              <option value="light">Светлая</option>
+              <option value="dark">Тёмная</option>
+            </select>
+          </label>
+          <label class="profile-item">
+            <span>Звук ответов</span>
+            <input id="soundToggle" type="checkbox" />
+          </label>
+          <label class="profile-item">
+            <span>Показывать таймер</span>
+            <input id="timerToggle" type="checkbox" checked />
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <section id="publicProfileModal" class="profile-panel hidden">
+      <div class="profile-card anim">
+        <div class="profile-head">
+          <h3 id="publicProfileTitle" class="profile-title">Профиль</h3>
+          <button id="publicProfileClose" class="btn profile-close" type="button">✕</button>
+        </div>
+        <div id="publicProfileBody" class="profile-settings"></div>
+      </div>
+    </section>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
     <script>
       const keys = {
@@ -1076,7 +1140,8 @@
         feed: "apple_single_feed",
         presence: "apple_single_presence",
         queue: "apple_single_queue",
-        syncBase: "apple_single_sync_base"
+        syncBase: "apple_single_sync_base",
+        settings: "apple_single_settings"
       };
       const buildSyncConfig = () => {
         const urlParams = new URLSearchParams(window.location.search);
@@ -1113,6 +1178,7 @@
       const loginError = $("loginError");
       const profileName = $("profileName");
       const profileRating = $("profileRating");
+      const profileCrowns = $("profileCrowns");
       const profileBio = $("profileBio");
       const profileHandle = $("profileHandle");
       const profileAvatar = $("profileAvatar");
@@ -1142,6 +1208,19 @@
       const menuSwipeWrap = menuSwipeTrack.parentElement;
       const matchModal = $("matchModal");
       const matchClose = $("matchClose");
+      const topLeaders = $("topLeaders");
+      const playCooldown = $("playCooldown");
+      const settingsBtn = $("settingsBtn");
+      const aboutBtn = $("aboutBtn");
+      const settingsModal = $("settingsModal");
+      const settingsClose = $("settingsClose");
+      const themeSelect = $("themeSelect");
+      const soundToggle = $("soundToggle");
+      const timerToggle = $("timerToggle");
+      const publicProfileModal = $("publicProfileModal");
+      const publicProfileClose = $("publicProfileClose");
+      const publicProfileTitle = $("publicProfileTitle");
+      const publicProfileBody = $("publicProfileBody");
 
       const loginForm = $("loginForm");
       const registerForm = $("registerForm");
@@ -1163,6 +1242,7 @@
       let activeQuiz = [];
       let activeQuestionIndex = 0;
       let activeCorrect = 0;
+      let playCooldownTimer = null;
 
       const safeJSON = (raw, fallback) => {
         try { return JSON.parse(raw) ?? fallback; } catch { return fallback; }
@@ -1174,7 +1254,21 @@
       const getPresence = () => safeJSON(localStorage.getItem(keys.presence), {});
       const getQueue = () => safeJSON(localStorage.getItem(keys.queue), []);
       const statsKey = (name) => `apple_single_profile_${name}`;
+      const getSettings = () => safeJSON(localStorage.getItem(keys.settings), { sound: true, showTimer: true });
+      const saveSettings = (settings) => localStorage.setItem(keys.settings, JSON.stringify(settings));
       const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
+      const crownsByCorrectAnswers = (correct) => {
+        if (correct <= 5) return 0;
+        if (correct <= 10) return 5;
+        if (correct <= 15) return 10;
+        return 15;
+      };
+      const formatRemaining = (ms) => {
+        const totalSec = Math.ceil(ms / 1000);
+        const mins = String(Math.floor(totalSec / 60)).padStart(2, "0");
+        const secs = String(totalSec % 60).padStart(2, "0");
+        return `${mins}:${secs}`;
+      };
       const parseQuizText = (text) => {
         const trimmed = text.trim();
         if (!trimmed) return [];
@@ -1296,6 +1390,7 @@
         document.body.classList.toggle("dark", dark);
         localStorage.setItem(keys.theme, dark ? "dark" : "light");
         themeToggle.textContent = dark ? "☀️" : "🌙";
+        if (themeSelect) themeSelect.value = dark ? "dark" : "light";
       };
 
       const setMode = (mode) => {
@@ -1318,6 +1413,7 @@
 
         profileName.textContent = visibleName;
         profileRating.textContent = profile.rating ?? 1200;
+        profileCrowns.textContent = `👑 ${Number(profile.crowns) || 0} корон`;
         profileBio.textContent = bioValue;
         profileHandle.textContent = handleValue.startsWith("@") ? handleValue : `@${handleValue}`;
         profileAvatar.textContent = avatarData ? "" : avatarLetter;
@@ -1357,7 +1453,7 @@
         const list = users();
         return Object.entries(list)
           .map(([username, account]) => {
-            const profile = safeJSON(localStorage.getItem(statsKey(username)), { rating: 1200, matches: 0, wins: 0 });
+            const profile = safeJSON(localStorage.getItem(statsKey(username)), { rating: 1200, matches: 0, wins: 0, crowns: 0, lastPlayedAt: 0 });
             return {
               username,
               displayName: account.name || account.nick || username,
@@ -1372,9 +1468,18 @@
       const renderLeaderboard = (currentUsername) => {
         const leaderboard = leaderboardData();
         if (!leaderboard.length) {
-          userRankList.innerHTML = "<li>Пока нет игроков в рейтинге.</li>";
+          topLeaders.innerHTML = `<li class="feed-item">Пока нет игроков в рейтинге.</li>`;
+          userRankList.innerHTML = `<li class="feed-item">Пока нет игроков в рейтинге.</li>`;
           return;
         }
+
+        topLeaders.innerHTML = leaderboard.slice(0, 3).map((player, index) => `
+          <li>
+            <button class="leaderboard-item" data-user="${player.username}" type="button">
+              ${index + 1}. ${player.displayName} — ★${player.rating}
+            </button>
+          </li>
+        `).join("");
 
         const currentIndex = leaderboard.findIndex((player) => player.username === currentUsername);
         const aroundCurrent = currentIndex >= 0
@@ -1385,7 +1490,7 @@
           .map((player) => {
             const rank = leaderboard.findIndex((item) => item.username === player.username) + 1;
             const you = player.username === currentUsername ? " (вы)" : "";
-            return `<li>${rank}. ${player.displayName} — ${player.rating}${you}</li>`;
+            return `<li><button class="leaderboard-item" data-user="${player.username}" type="button">${rank}. ${player.displayName} — ★${player.rating}${you}</button></li>`;
           })
           .join("");
       };
@@ -1396,7 +1501,7 @@
         localStorage.setItem(keys.session, normalizedSession);
         authView.classList.add("hidden");
         menuView.classList.remove("hidden");
-        const profile = safeJSON(localStorage.getItem(statsKey(normalizedSession)), { rating: 1200, matches: 0, wins: 0 });
+        const profile = safeJSON(localStorage.getItem(statsKey(normalizedSession)), { rating: 1200, matches: 0, wins: 0, crowns: 0, lastPlayedAt: 0 });
         const list = users();
         const account = list[normalizedSession] || list[username] || {};
         const visibleName = account.name || account.nick || username;
@@ -1420,8 +1525,13 @@
         feedForm.classList.add("hidden");
         feedSubmitBtn.disabled = !isAdmin;
         feedInput.disabled = !isAdmin;
+        const settings = getSettings();
+        themeSelect.value = document.body.classList.contains("dark") ? "dark" : "light";
+        soundToggle.checked = Boolean(settings.sound);
+        timerToggle.checked = Boolean(settings.showTimer);
         setMenuPage("home");
         resetMatchmaking();
+        startCooldownWatcher();
 
         if (window.gsap) {
           gsap.fromTo("#menuView .anim", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.65, stagger: 0.1, ease: "power3.out" });
@@ -1431,6 +1541,7 @@
       const openAuth = () => {
         clearInterval(matchmakingTimer);
         clearInterval(presenceTimer);
+        clearInterval(playCooldownTimer);
         if (currentSessionUser) {
           const presence = getPresence();
           delete presence[currentSessionUser];
@@ -1443,6 +1554,8 @@
         menuView.classList.add("hidden");
         matchModal.classList.add("hidden");
         profileEditModal.classList.add("hidden");
+        settingsModal.classList.add("hidden");
+        publicProfileModal.classList.add("hidden");
         loginError.classList.add("hidden");
         loginForm.reset();
         registerForm.reset();
@@ -1479,6 +1592,21 @@
         profileEditModal.classList.remove("hidden");
       };
       const closeEditProfile = () => profileEditModal.classList.add("hidden");
+      const openPublicProfile = (username) => {
+        const list = users();
+        const account = list[username];
+        if (!account) return;
+        const profile = safeJSON(localStorage.getItem(statsKey(username)), { rating: 1200, matches: 0, wins: 0, crowns: 0 });
+        const displayName = account.name || account.nick || username;
+        publicProfileTitle.textContent = `Профиль: ${displayName}`;
+        publicProfileBody.innerHTML = `
+          <div class="profile-item"><span>@юзернейм</span><strong>@${username}</strong></div>
+          <div class="profile-item"><span>Рейтинг</span><strong>★ ${profile.rating || 1200}</strong></div>
+          <div class="profile-item"><span>Короны</span><strong>👑 ${profile.crowns || 0}</strong></div>
+          <div class="profile-item"><span>Описание</span><strong>${(profile.bio || "Описание не указано").replace(/</g, "&lt;")}</strong></div>
+        `;
+        publicProfileModal.classList.remove("hidden");
+      };
 
       const filled = (...fields) => fields.every((el) => el.value.trim());
       const isUsernameValid = (username) => username.length >= 4 && username.length <= 15;
@@ -1486,8 +1614,8 @@
       const resetMatchmaking = () => {
         clearInterval(matchmakingTimer);
         clearInterval(quizTimerRef);
-        playBtn.disabled = false;
-        playBtn.textContent = "ИГРАТЬ";
+        updatePlayAvailability();
+        if (!playBtn.disabled) playBtn.textContent = "ИГРАТЬ";
         matchStatus.textContent = "Выберите режим и нажмите «Играть».";
         quizCounter.textContent = "Вопрос 0/20";
         quizTimer.textContent = "10 сек";
@@ -1496,7 +1624,31 @@
         gameStatus.textContent = `Режим: ${selectedMode}. Нажмите «Играть», чтобы начать викторину.`;
       };
 
+      const updatePlayAvailability = () => {
+        if (!currentSessionUser) return;
+        const profile = safeJSON(localStorage.getItem(statsKey(currentSessionUser)), { lastPlayedAt: 0 });
+        const now = Date.now();
+        const nextTime = Number(profile.lastPlayedAt || 0) + 3 * 60 * 1000;
+        const left = nextTime - now;
+        if (left > 0) {
+          playBtn.disabled = true;
+          playBtn.textContent = "Ожидание...";
+          playCooldown.textContent = `Следующая игра через ${formatRemaining(left)}`;
+        } else {
+          playBtn.disabled = false;
+          playBtn.textContent = "ИГРАТЬ";
+          playCooldown.textContent = "Играть можно прямо сейчас.";
+        }
+      };
+
+      const startCooldownWatcher = () => {
+        clearInterval(playCooldownTimer);
+        updatePlayAvailability();
+        playCooldownTimer = setInterval(updatePlayAvailability, 1000);
+      };
+
       const startMatchmaking = () => {
+        if (playBtn.disabled) return;
         const modeQuestions = quizData.filter((q) => q.mode === selectedMode.toLowerCase());
         if (modeQuestions.length < 500) {
           gameStatus.textContent = `Недостаточно вопросов для режима «${selectedMode}» в base.txt (нужно минимум 500).`;
@@ -1513,19 +1665,29 @@
         const showQuestion = () => {
           if (activeQuestionIndex >= activeQuiz.length) {
             clearInterval(quizTimerRef);
-            matchStatus.textContent = `Игра окончена: ${activeCorrect}/${activeQuiz.length} правильных.`;
+            const crowns = crownsByCorrectAnswers(activeCorrect);
+            const profile = safeJSON(localStorage.getItem(statsKey(currentSessionUser)), { rating: 1200, matches: 0, wins: 0, crowns: 0, lastPlayedAt: 0 });
+            profile.matches = Number(profile.matches || 0) + 1;
+            profile.crowns = Number(profile.crowns || 0) + crowns;
+            profile.lastPlayedAt = Date.now();
+            localStorage.setItem(statsKey(currentSessionUser), JSON.stringify(profile));
+            const list = users();
+            const account = list[currentSessionUser] || {};
+            renderProfile(account, currentSessionUser, profile);
+            renderLeaderboard(currentSessionUser);
+            startCooldownWatcher();
+            matchStatus.textContent = `Игра окончена: ${activeCorrect}/${activeQuiz.length} правильных. Награда: +${crowns} 👑`;
             quizCounter.textContent = `Вопрос ${activeQuiz.length}/${activeQuiz.length}`;
             quizTimer.textContent = "0 сек";
-            playBtn.disabled = false;
-            playBtn.textContent = "ИГРАТЬ";
             return;
           }
           const q = activeQuiz[activeQuestionIndex];
           let secondsLeft = 10;
           let answered = false;
-          matchStatus.textContent = `Режим: ${selectedMode}`;
+          matchStatus.textContent = `Ржим: ${selectedMode}`;
           quizCounter.textContent = `Вопрос ${activeQuestionIndex + 1}/${activeQuiz.length}`;
           quizTimer.textContent = `${secondsLeft} сек`;
+          quizTimer.parentElement.classList.toggle("hidden", !getSettings().showTimer);
           quizQuestion.textContent = q.question;
           quizOptions.innerHTML = q.options
             .map((opt, idx) => `<button class=\"btn btn-ghost quiz-opt\" data-idx=\"${idx}\" type=\"button\">${opt}</button>`)
@@ -1622,6 +1784,40 @@
         });
         gameStatus.textContent = `Режим: ${selectedMode}. Нажмите «Играть», чтобы начать викторину.`;
       });
+      settingsBtn.addEventListener("click", () => {
+        settingsModal.classList.remove("hidden");
+      });
+      settingsClose.addEventListener("click", () => settingsModal.classList.add("hidden"));
+      settingsModal.addEventListener("click", (e) => {
+        if (e.target === settingsModal) settingsModal.classList.add("hidden");
+      });
+      themeSelect.addEventListener("change", () => applyTheme(themeSelect.value));
+      soundToggle.addEventListener("change", () => {
+        const settings = getSettings();
+        settings.sound = soundToggle.checked;
+        saveSettings(settings);
+      });
+      timerToggle.addEventListener("change", () => {
+        const settings = getSettings();
+        settings.showTimer = timerToggle.checked;
+        saveSettings(settings);
+      });
+      aboutBtn.addEventListener("click", () => {
+        alert("Ссылка на проект будет добавлена позже.");
+      });
+      const onLeaderboardClick = (e) => {
+        const btn = e.target.closest(".leaderboard-item");
+        if (!btn) return;
+        const username = btn.dataset.user;
+        if (!username) return;
+        openPublicProfile(username);
+      };
+      topLeaders.addEventListener("click", onLeaderboardClick);
+      userRankList.addEventListener("click", onLeaderboardClick);
+      publicProfileClose.addEventListener("click", () => publicProfileModal.classList.add("hidden"));
+      publicProfileModal.addEventListener("click", (e) => {
+        if (e.target === publicProfileModal) publicProfileModal.classList.add("hidden");
+      });
       feedComposeBtn.addEventListener("click", () => {
         if (currentSessionUser !== "admin") return;
         const willOpen = feedForm.classList.contains("hidden");
@@ -1687,7 +1883,7 @@
         account.name = editName.value.trim() || account.name;
         saveUsers(list);
 
-        const profile = safeJSON(localStorage.getItem(statsKey(currentSessionUser)), { rating: 1200, matches: 0, wins: 0 });
+        const profile = safeJSON(localStorage.getItem(statsKey(currentSessionUser)), { rating: 1200, matches: 0, wins: 0, crowns: 0, lastPlayedAt: 0 });
         profile.bio = editBio.value.trim().slice(0, 80);
         profile.handle = editHandle.value.trim();
         profile.avatar = pendingAvatarData || profile.avatar || "";
@@ -1730,8 +1926,19 @@
       window.addEventListener("storage", (e) => {
         if (e.key === keys.feed) renderFeed();
         if (e.key === keys.presence) updateOnlineBadge();
+        if (e.key === keys.settings) {
+          const settings = getSettings();
+          soundToggle.checked = Boolean(settings.sound);
+          timerToggle.checked = Boolean(settings.showTimer);
+        }
         if (e.key === keys.users || (e.key && e.key.startsWith("apple_single_profile_"))) {
           renderLeaderboard(currentSessionUser);
+          if (currentSessionUser) {
+            const list = users();
+            const account = list[currentSessionUser] || {};
+            const profile = safeJSON(localStorage.getItem(statsKey(currentSessionUser)), { rating: 1200, matches: 0, wins: 0, crowns: 0, lastPlayedAt: 0 });
+            renderProfile(account, currentSessionUser, profile);
+          }
         }
         if (e.key === keys.queue && matchmakingTimer) {
           // Let matchmaking loop pick updates on next tick.
@@ -1778,8 +1985,10 @@
 
       (() => {
         applyTheme(localStorage.getItem(keys.theme) || "light");
+        if (!localStorage.getItem(keys.settings)) {
+          saveSettings({ sound: true, showTimer: true });
+        }
         loadQuizBase();
-        initSharedSync();
         initSharedSync();
         const session = localStorage.getItem(keys.session);
         updateOnlineBadge();
