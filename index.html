@@ -12,7 +12,11 @@
         --text-muted: #6d7280;
         --card-bg: rgba(255, 255, 255, 0.62);
         --card-border: rgba(255, 255, 255, 0.78);
-        --card-shadow: 0 20px 60px rgba(22, 29, 45, 0.16);
+        --card-shadow: 0 22px 70px rgba(22, 29, 45, 0.16);
+        --card-shadow-soft: 0 10px 34px rgba(20, 28, 45, 0.1);
+        --glass-stroke: rgba(255, 255, 255, 0.72);
+        --glass-panel: linear-gradient(145deg, rgba(255, 255, 255, 0.8), rgba(248, 250, 255, 0.55));
+        --surface-elevated: rgba(255, 255, 255, 0.16);
         --input-bg: rgba(255, 255, 255, 0.85);
         --input-border: rgba(25, 31, 48, 0.12);
         --button-bg: #0071e3;
@@ -27,6 +31,10 @@
         --card-bg: rgba(28, 28, 30, 0.74);
         --card-border: rgba(255, 255, 255, 0.12);
         --card-shadow: 0 24px 70px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+        --card-shadow-soft: 0 14px 34px rgba(0, 0, 0, 0.36);
+        --glass-stroke: rgba(255, 255, 255, 0.18);
+        --glass-panel: linear-gradient(145deg, rgba(34, 35, 44, 0.8), rgba(20, 20, 28, 0.62));
+        --surface-elevated: rgba(255, 255, 255, 0.08);
         --input-bg: rgba(12, 12, 13, 0.9);
         --input-border: rgba(255, 255, 255, 0.16);
         --button-bg: #2997ff;
@@ -278,9 +286,9 @@
         flex-wrap: wrap;
         border-radius: 28px;
         padding: 14px;
-        background: var(--menu-bg);
-        border: 1px solid var(--card-border);
-        box-shadow: var(--card-shadow);
+        background: var(--glass-panel);
+        border: 1px solid var(--glass-stroke);
+        box-shadow: var(--card-shadow), 0 1px 0 rgba(255,255,255,.36) inset;
         transition: background .35s ease, border-color .35s ease, box-shadow .35s ease;
       }
 
@@ -345,9 +353,10 @@
       }
 
       .hero-tile {
-        border: 1px solid var(--card-border);
+        border: 1px solid var(--glass-stroke);
         border-radius: 16px;
-        background: rgba(255, 255, 255, 0.08);
+        background: var(--surface-elevated);
+        box-shadow: var(--card-shadow-soft);
         padding: 10px;
       }
 
@@ -371,9 +380,10 @@
       }
 
       .quick-card {
-        border: 1px solid var(--card-border);
+        border: 1px solid var(--glass-stroke);
         border-radius: 16px;
-        background: rgba(255, 255, 255, 0.08);
+        background: var(--surface-elevated);
+        box-shadow: var(--card-shadow-soft);
         padding: 12px;
         text-align: left;
         color: var(--text);
@@ -466,10 +476,10 @@
       }
 
       .feed-item {
-        border: 1px solid var(--card-border);
+        border: 1px solid var(--glass-stroke);
         border-radius: 14px;
         padding: 10px 12px;
-        background: rgba(255, 255, 255, 0.06);
+        background: var(--surface-elevated);
       }
 
       .feed-top {
@@ -522,9 +532,9 @@
       .leaderboard-item {
         width: 100%;
         text-align: left;
-        border: 1px solid var(--card-border);
+        border: 1px solid var(--glass-stroke);
         border-radius: 12px;
-        background: rgba(255, 255, 255, 0.06);
+        background: var(--surface-elevated);
         color: var(--text);
         padding: 9px 10px;
         cursor: pointer;
@@ -605,21 +615,20 @@
         gap: 8px;
         border-radius: 24px;
         padding: 10px;
-        background: var(--menu-bg);
-        border: 1px solid var(--card-border);
-        box-shadow: var(--card-shadow);
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
+        background: var(--glass-panel);
+        border: 1px solid var(--glass-stroke);
+        box-shadow: var(--card-shadow), 0 1px 0 rgba(255,255,255,.3) inset;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
       }
 
       .tab-item {
-        border: 0;
         border: 1px solid transparent;
         border-radius: 16px;
         padding: 10px 8px;
         text-align: center;
         color: var(--text);
-        background: transparent;
+        background: rgba(255,255,255,0.03);
         text-decoration: none;
         font-size: .92rem;
         transition: all .25s ease;
@@ -627,9 +636,9 @@
       }
 
       .tab-item.active {
-        border-color: rgba(120, 188, 255, 0.75);
-        background: rgba(86, 170, 255, 0.22);
-        box-shadow: 0 0 0 1px rgba(142, 212, 255, 0.4) inset, 0 8px 20px rgba(65, 151, 236, 0.28);
+        border-color: rgba(120, 188, 255, 0.58);
+        background: linear-gradient(145deg, rgba(80, 166, 255, 0.26), rgba(129, 96, 255, 0.23));
+        box-shadow: 0 0 0 1px rgba(198, 232, 255, 0.36) inset, 0 8px 20px rgba(65, 151, 236, 0.26);
       }
 
       .profile-panel {
@@ -840,7 +849,8 @@
         color: var(--text);
         text-decoration: none;
         border: 1px solid transparent;
-        transition: transform .25s ease, box-shadow .25s ease, border-color .3s ease;
+        background: rgba(255,255,255,0.02);
+        transition: transform .25s ease, box-shadow .25s ease, border-color .3s ease, background .3s ease;
       }
 
       .welcome {
@@ -891,19 +901,31 @@
       }
 
       .menu-item:hover, .switch button:hover {
-        text-decoration: underline;
+        text-decoration: none;
       }
 
       .menu-item:hover {
-        border-color: var(--card-border);
-        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(138, 201, 255, 0.46);
+        background: linear-gradient(140deg, rgba(117, 189, 255, 0.16), rgba(176, 156, 255, 0.13));
       }
 
       .tab-item:hover {
         transform: scale(1.02);
-        border-color: var(--card-border);
-        background: rgba(255, 255, 255, 0.08);
-        text-decoration: underline;
+        border-color: rgba(140, 205, 255, 0.4);
+        background: rgba(131, 178, 255, 0.16);
+        text-decoration: none;
+      }
+
+
+      .btn:focus-visible,
+      .menu-item:focus-visible,
+      .tab-item:focus-visible,
+      input:focus-visible,
+      .quick-card:focus-visible,
+      .leaderboard-item:focus-visible {
+        outline: none;
+        border-color: rgba(126, 197, 255, 0.8);
+        box-shadow: 0 0 0 3px rgba(120, 189, 255, 0.22);
       }
 
       @media (max-width: 640px) {
