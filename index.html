@@ -1067,24 +1067,6 @@
                       <strong id="heroMatches">0</strong>
                     </div>
                   </div>
-                  <div class="quick-grid">
-                    <button id="quickLeaderboardBtn" class="quick-card" type="button">
-                      <h4>🏆 Рейтинг</h4>
-                      <p>Перейти к лучшим игрокам сезона</p>
-                    </button>
-                    <button id="quickTournamentsBtn" class="quick-card" type="button">
-                      <h4>⚔️ Турниры</h4>
-                      <p>Открыть список активных событий</p>
-                    </button>
-                    <button id="quickProfileBtn" class="quick-card" type="button">
-                      <h4>👤 Профиль</h4>
-                      <p>Быстро изменить имя, аватар и описание</p>
-                    </button>
-                    <button id="quickSupportBtn" class="quick-card" type="button">
-                      <h4>💬 Поддержка</h4>
-                      <p>Связаться с поддержкой проекта</p>
-                    </button>
-                  </div>
                 </article>
 
                 <div class="rank-grid">
@@ -1315,10 +1297,6 @@
       const heroRating = $("heroRating");
       const heroCrowns = $("heroCrowns");
       const heroMatches = $("heroMatches");
-      const quickLeaderboardBtn = $("quickLeaderboardBtn");
-      const quickTournamentsBtn = $("quickTournamentsBtn");
-      const quickProfileBtn = $("quickProfileBtn");
-      const quickSupportBtn = $("quickSupportBtn");
 
       const loginForm = $("loginForm");
       const registerForm = $("registerForm");
@@ -1876,18 +1854,6 @@
       tabHome.addEventListener("click", () => setMenuPage("home"));
       tabTour.addEventListener("click", () => setMenuPage("tour"));
       tabMore.addEventListener("click", () => setMenuPage("more"));
-      quickLeaderboardBtn.addEventListener("click", () => {
-        setMenuPage("home");
-        document.querySelector("#topLeaders")?.scrollIntoView({ behavior: "smooth", block: "center" });
-      });
-      quickTournamentsBtn.addEventListener("click", () => setMenuPage("tour"));
-      quickProfileBtn.addEventListener("click", () => {
-        setMenuPage("profile");
-        openEditProfile();
-      });
-      quickSupportBtn.addEventListener("click", () => {
-        window.open("https://t.me/ogosixseven", "_blank", "noopener,noreferrer");
-      });
       modeSelect.addEventListener("click", (e) => {
         const btn = e.target.closest(".mode-btn");
         if (!btn) return;
