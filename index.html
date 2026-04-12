@@ -1028,7 +1028,7 @@
                   <button id="profileAvatar" class="profile-avatar" type="button">A</button>
                   <div class="profile-name-row">
                     <h3 id="profileName">Имя</h3>
-                    <span class="profile-star">★</span><span id="profileRating">1200</span>
+                    <span class="profile-star">👑</span><span id="profileRating">0</span>
                   </div>
                   <p id="profileCrowns" class="profile-handle">👑 0 корон</p>
                   <p id="profileHandle" class="profile-handle">@username</p>
@@ -1056,7 +1056,7 @@
                   <div class="home-hero">
                     <div class="hero-tile">
                       <span>Рейтинг</span>
-                      <strong id="heroRating">★1200</strong>
+                      <strong id="heroRating">👑0</strong>
                     </div>
                     <div class="hero-tile">
                       <span>Короны</span>
@@ -1355,12 +1355,7 @@
       const getSettings = () => safeJSON(localStorage.getItem(keys.settings), { sound: true, showTimer: true });
       const saveSettings = (settings) => localStorage.setItem(keys.settings, JSON.stringify(settings));
       const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
-      const crownsByCorrectAnswers = (correct) => {
-        if (correct <= 5) return 0;
-        if (correct <= 10) return 5;
-        if (correct <= 15) return 10;
-        return 15;
-      };
+      const crownsByCorrectAnswers = (correct) => Math.max(0, Number(correct) || 0);
       const formatRemaining = (ms) => {
         const totalSec = Math.ceil(ms / 1000);
         const mins = String(Math.floor(totalSec / 60)).padStart(2, "0");
@@ -1510,7 +1505,7 @@
         const avatarData = profile.avatar || "";
 
         profileName.textContent = visibleName;
-        profileRating.textContent = profile.rating ?? 1200;
+        profileRating.textContent = Number(profile.crowns) || 0;
         profileCrowns.textContent = `👑 ${Number(profile.crowns) || 0} корон`;
         profileBio.textContent = bioValue;
         profileHandle.textContent = handleValue.startsWith("@") ? handleValue : `@${handleValue}`;
@@ -1526,7 +1521,7 @@
       };
 
       const renderHomeMenu = (profile) => {
-        heroRating.textContent = `★${Number(profile.rating) || 1200}`;
+        heroRating.textContent = `👑${Number(profile.crowns) || 0}`;
         heroCrowns.textContent = `👑${Number(profile.crowns) || 0}`;
         heroMatches.textContent = String(Number(profile.matches) || 0);
       };
@@ -1561,7 +1556,7 @@
             return {
               username,
               displayName: account.name || account.nick || username,
-              rating: Number(profile.rating) || 1200,
+              rating: Number(profile.crowns) || 0,
               matches: Number(profile.matches) || 0,
               wins: Number(profile.wins) || 0
             };
@@ -1580,7 +1575,7 @@
         topLeaders.innerHTML = leaderboard.slice(0, 3).map((player, index) => `
           <li>
             <button class="leaderboard-item" data-user="${player.username}" type="button">
-              ${index + 1}. ${player.displayName} — ★${player.rating}
+              ${index + 1}. ${player.displayName} — 👑${player.rating}
             </button>
           </li>
         `).join("");
@@ -1594,7 +1589,7 @@
           .map((player) => {
             const rank = leaderboard.findIndex((item) => item.username === player.username) + 1;
             const you = player.username === currentUsername ? " (вы)" : "";
-            return `<li><button class="leaderboard-item" data-user="${player.username}" type="button">${rank}. ${player.displayName} — ★${player.rating}${you}</button></li>`;
+            return `<li><button class="leaderboard-item" data-user="${player.username}" type="button">${rank}. ${player.displayName} — 👑${player.rating}${you}</button></li>`;
           })
           .join("");
       };
@@ -1706,7 +1701,7 @@
         publicProfileTitle.textContent = `Профиль: ${displayName}`;
         publicProfileBody.innerHTML = `
           <div class="profile-item"><span>@юзернейм</span><strong>@${username}</strong></div>
-          <div class="profile-item"><span>Рейтинг</span><strong>★ ${profile.rating || 1200}</strong></div>
+          <div class="profile-item"><span>Рейтинг</span><strong>👑 ${profile.crowns || 0}</strong></div>
           <div class="profile-item"><span>Короны</span><strong>👑 ${profile.crowns || 0}</strong></div>
           <div class="profile-item"><span>Описание</span><strong>${(profile.bio || "Описание не указано").replace(/</g, "&lt;")}</strong></div>
         `;
