@@ -349,12 +349,26 @@
       }
 
       @media (max-width: 760px) {
+        body { padding: 10px; }
+        .app { min-height: calc(100vh - 20px); }
         .card { padding: 20px; }
+        .menu, .rank-card, .profile-card { border-radius: 18px; }
         .welcome { margin-top: 58px; }
         .play-btn { min-width: 100%; }
         .bottom-tabs { font-size: .84rem; }
         .profile-grid, .home-hero, .quick-grid { grid-template-columns: 1fr; }
         .profile-actions { grid-template-columns: 1fr; }
+        .public-profile-name { font-size: 1.5rem; }
+        .public-profile-handle { font-size: 1.2rem; }
+        .public-profile-bio { font-size: 1rem; min-height: 64px; padding: 12px; }
+      }
+
+      @media (max-width: 420px) {
+        .dash-top { flex-direction: column; align-items: stretch; }
+        .dash-meta { gap: 6px; }
+        .tab-item { font-size: .8rem; padding: 9px 4px; }
+        .public-profile-avatar { width: 88px; height: 88px; border-radius: 18px; font-size: 1.25rem; }
+        .profile-avatar { width: 98px; height: 98px; border-radius: 22px; font-size: 1.45rem; }
       }
 
       @media (min-width: 920px) {
@@ -811,10 +825,22 @@
           .filter((q) => q.mode && q.question && q.options.length === 4 && Number.isInteger(q.answer));
       };
       const loadQuizBase = async () => {
+        const currentPath = window.location.pathname || "/";
+        const pathAsDir = currentPath.endsWith("/")
+          ? currentPath
+          : (/\.[^/]+$/.test(currentPath) ? currentPath.replace(/[^/]+$/, "") : `${currentPath}/`);
+        const primaryUrl = new URL("base.txt", `${window.location.origin}${pathAsDir}`).toString();
         try {
-          const res = await fetch("base.txt", { cache: "no-store" });
-          if (!res.ok) return;
-          quizData = parseQuizText(await res.text());
+          const res = await fetch(primaryUrl, { cache: "no-store" });
+          if (res.ok) {
+            quizData = parseQuizText(await res.text());
+            return;
+          }
+        } catch {}
+        try {
+          const fallback = await fetch("base.txt", { cache: "no-store" });
+          if (!fallback.ok) return;
+          quizData = parseQuizText(await fallback.text());
         } catch {}
       };
       const scheduleSharedPatch = () => {
@@ -1179,11 +1205,11 @@
       const startMatchmaking = () => {
         if (playBtn.disabled) return;
         const modeQuestions = quizData.filter((q) => q.mode === selectedMode.toLowerCase());
-        if (modeQuestions.length < 500) {
-          gameStatus.textContent = `Недостаточно вопросов для режима «${selectedMode}» в base.txt (нужно минимум 500).`;
+        if (modeQuestions.length < 20) {
+          gameStatus.textContent = `Недостаточно вопросов для режима «${selectedMode}» в base.txt (нужно минимум 20).`;
           return;
         }
-        const pool = shuffle(modeQuestions).slice(0, 500);
+        const pool = shuffle(modeQuestions);
         activeQuiz = shuffle(pool).slice(0, 20);
         activeQuestionIndex = 0;
         activeCorrect = 0;
