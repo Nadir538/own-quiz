@@ -825,24 +825,39 @@
           .filter((q) => q.mode && q.question && q.options.length === 4 && Number.isInteger(q.answer));
       };
       const loadQuizBase = async () => {
-        const currentPath = window.location.pathname || "/";
-        const pathAsDir = currentPath.endsWith("/")
-          ? currentPath
-          : (/\.[^/]+$/.test(currentPath) ? currentPath.replace(/[^/]+$/, "") : `${currentPath}/`);
-        const primaryUrl = new URL("base.txt", `${window.location.origin}${pathAsDir}`).toString();
-        try {
-          const res = await fetch(primaryUrl, { cache: "no-store" });
-          if (res.ok) {
-            quizData = parseQuizText(await res.text());
-            return;
-          }
-        } catch {}
-        try {
-          const fallback = await fetch("base.txt", { cache: "no-store" });
-          if (!fallback.ok) return;
-          quizData = parseQuizText(await fallback.text());
-        } catch {}
-      };
+    // На GitHub Pages файл всегда доступен от корня репозитория
+    const baseUrl = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
+    const primaryUrl = new URL("base.txt", baseUrl).toString();
+    
+    try {
+      console.log('Trying to load quiz from:', primaryUrl);
+      const res = await fetch(primaryUrl, { cache: "no-store" });
+      if (res.ok) {
+        const text = await res.text();
+        console.log('Loaded base.txt, length:', text.length);
+        quizData = parseQuizText(text);
+        return;
+      }
+    } catch (e) {
+      console.warn('Primary load failed:', e);
+    }
+    
+    // Fallback: попробуем загрузить с корня сайта
+    try {
+      const fallbackUrl = new URL("/base.txt", window.location.origin).toString();
+      console.log('Trying fallback:', fallbackUrl);
+      const fallback = await fetch(fallbackUrl, { cache: "no-store" });
+      if (fallback.ok) {
+        quizData = parseQuizText(await fallback.text());
+        return;
+      }
+    } catch (e) {
+      console.error('Fallback load failed:', e);
+    }
+    
+    console.error('Could not load base.txt from any location');
+    gameStatus.textContent = 'Ошибка загрузки вопросов. Проверьте консоль.';
+  };
       const scheduleSharedPatch = () => {
         if (!sharedSyncEnabled || isApplyingSharedState) return;
         clearTimeout(sharedSyncDebounce);
